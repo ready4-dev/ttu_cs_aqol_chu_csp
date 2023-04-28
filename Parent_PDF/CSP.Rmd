@@ -57,6 +57,12 @@ library(scorz)
 library(TTU)
 ```
 
+Source functions that we will use later.
+
+```{r}
+source("../R/Functions.R")
+```
+
 # Ingest, transform, label and score data
 
 ## Ingest data
@@ -66,80 +72,108 @@ To start, we need to specify the path to our input dataset. The setting below (e
 #path_to_data_1L_chr <- NA_character_ # Replace with path to data if you have access to it
 ```
 
-Based on the value specified above, we can now ingest either the real study dataset or the synthetic (fake) data. We perform a number of data transformations (using the `youthvars::transform_raw_ds_for_analysis` function) to prepare the dataset for analysis and then pair the dataset with its data dictionary as a `Ready4useDyad`.
+Based on the value specified above, we can now ingest either the real study dataset or the synthetic (fake) data. We perform a number of data transformations (using the `transform_csnl_example_ds` function) to prepare the dataset for analysis and then pair the dataset with its data dictionary as a `Ready4useDyad`.
 
 ```{r}
-ds_tb <- readRDS(path_to_data_1L_chr) %>% tibble::as_tibble()
-```
-```{r}
-ds_tb <- ds_tb %>%
-  dplyr::rename(c_days_cut_back = K12_DaysCutDown,
-                c_days_unable = K11_DaysTotallyUnable,
-                c_MLT = MLT_mean, # Change
-                c_p_diag_s = DiagnosisPrimary,
-                d_age = Age,
-                d_ATSI = ATSI,
-                d_employed = Working,
-                d_employment_type = EmploymentType,
-                d_gender = Gender,
-                d_studying = Studying,
-                s_IRSD = IRSD,
-                s_remoteness = Remoteness) %>%
-  dplyr::select(-c("aqol6d_total_c",        "aqol6d_total_w"))
+A <- Ready4useDyad(ds_tb = {if(!is.na(path_to_data_1L_chr)){readRDS(path_to_data_1L_chr)
+  }else{Ready4useRepos(dv_nm_1L_chr = "fakes",
+                       dv_ds_nm_1L_chr = "https://doi.org/10.7910/DVN/HJXYKQ",
+                       dv_server_1L_chr = "dataverse.harvard.edu") %>%
+      ingest(fls_to_ingest_chr = c("SPECIFY_FILE_NAME_WHEN_WRITTEN"),
+             metadata_1L_lgl = F)}} %>% transform_csnl_example_ds(),
+  dictionary_r3 = Ready4useRepos(dv_nm_1L_chr = "TTU",
+                                 dv_ds_nm_1L_chr = "https://doi.org/10.7910/DVN/FDRUXH",
+                                 dv_server_1L_chr = "dataverse.harvard.edu") %>%
+    ingest(fls_to_ingest_chr = c("ymh_clinical_aqol_chu_dict_r3"),
+           metadata_1L_lgl = F)
+  ) 
+A <- A %>%
+  renew_Ready4useDyad(type_1L_chr = "label") # MODIFY WHEN READY4USE LIBRARY IS UPDATED
 ```
 
+We add some metadata about the structural properties of our dataset (variables for the unique record identifier and data collection round), using the `YouthvarsProfile` module.
+
 ```{r}
-dictionary_r3 <- Ready4useRepos(dv_nm_1L_chr = "TTU",
-                               dv_ds_nm_1L_chr = "https://doi.org/10.7910/DVN/DKDIB0", 
-                               dv_server_1L_chr = "dataverse.harvard.edu") %>% 
-  ingest(fls_to_ingest_chr = c("dictionary_r3"), 
-         metadata_1L_lgl = F) 
+A <- YouthvarsProfile(a_Ready4useDyad = A,
+                      id_var_nm_1L_chr = "fkClientID")
 ```
 
+
+## Score health utility
+We calculate adolescent AQoL-6D scores using the `ScorzAqol6Adol` module and save the dataset along with its metadata as a `TTUProject` module.
+
 ```{r}
-dictionary_r3 <- dictionary_r3 %>%
-  renew.ready4use_dictionary(var_nm_chr = setdiff(names(ds_tb),dictionary_r3$var_nm_chr) %>% sort(),
-                             var_ctg_chr = c(rep("clinical symptom",3),
-                                             rep("multi-attribute utility instrument question",9),
-                                             "health_utility",
-                                             rep("demographic",3),
-                                             "psychological distress",
-                                             rep("spatial",2)),
-                             var_desc_chr = c("Days Unable To Perform Usual Activities",
-                                             "Days Cut Back On Usual Activities",
-                                             "My Life Tracker", # Change
-                                             paste0("Child Health Utility (9 Dimension) question ",1:9),
-                                             "Child Health Utility (9 Dimension) total score",
-                                             "Employed",
-                                             "Employment Type",
-                                             "Studying",
-                                             "Kessler Psychological Distress Scale (10 Item)",
-                                            "Area Index of Relative Social Disadvantage",
-                                             "Area Remoteness"
-                                             ),
-                             var_type_chr = NA_character_)
+A <- TTUProject(a_ScorzProfile = ScorzAqol6Adol(a_YouthvarsProfile = A))
+#A <- renewSlot(A, "a_ScorzProfile") # Will replace subsequent line
+A@a_ScorzProfile <- renew_ScorzAqol6Adol(A@a_ScorzProfile) # This is temporary
 ```
 
+# Describe and analyse data
+
+## Specify modelling parameters
+
+We begin by reorganising some of the metadata we have already specified about our dataset.
+
 ```{r}
-# A <- Ready4useDyad(ds_tb = {if(!is.na(path_to_data_1L_chr)){readRDS(path_to_data_1L_chr)
-#   }else{Ready4useRepos(dv_nm_1L_chr = "fakes", 
-#                        dv_ds_nm_1L_chr = "https://doi.org/10.7910/DVN/HJXYKQ", 
-#                        dv_server_1L_chr = "dataverse.harvard.edu") %>%
-#       ingest(fls_to_ingest_chr = c("ymh_clinical_tb"), 
-#              metadata_1L_lgl = F)}} %>% youthvars::transform_raw_ds_for_analysis(),
-#   dictionary_r3 = Ready4useRepos(dv_nm_1L_chr = "TTU",
-#                                  dv_ds_nm_1L_chr = "https://doi.org/10.7910/DVN/DKDIB0", 
-#                                  dv_server_1L_chr = "dataverse.harvard.edu") %>% 
-#     ingest(fls_to_ingest_chr = c("dictionary_r3"), 
-#            metadata_1L_lgl = F)) %>%  
-#   renew(type_1L_chr = "label")
+A <- renewSlot(A, "b_SpecificParameters", SpecificConverter(a_ScorzProfile = A@a_ScorzProfile) %>%
+                 metamorphose() %>%
+                 procureSlot("b_SpecificParameters"))
 ```
 
-We add some metadata about the structural properties of our dataset (variables for the unique record identifier and data collection round), using the `YouthvarsSeries` module.
+We add a table describing the candidate predictors that we will explore.
 
 ```{r}
-# A <- YouthvarsSeries(a_Ready4useDyad = A,
-#                      id_var_nm_1L_chr = "fkClientID",
-#                      timepoint_var_nm_1L_chr = "round",
-#                      timepoint_vals_chr = levels(procureSlot(A,"ds_tb")$round))
+# A <- renewSlot(A, "b_SpecificParameters@predictors_lup", Ready4useRepos(dv_nm_1L_chr = "TTU", 
+#                                                                         dv_ds_nm_1L_chr = "https://doi.org/10.7910/DVN/FDRUXH", 
+#                                                                         dv_server_1L_chr = "dataverse.harvard.edu") %>%
+#                  ingest(fls_to_ingest_chr = c("predictors_r3"),
+#                         metadata_1L_lgl = F)) 
+A@b_SpecificParameters@predictors_lup <- make_csnl_example_predrs() # Temporary - Prior code preferred once scaling factor fixed.
+```
+
+We add the required parameters (allowable range for utility scores, the variable names of candidate predictors to be explored in the primary analysis, candidate covariates, variables to use when preparing descriptive statistics, the data collection date-stamp variable and metadata on candidate predictors).
+
+```{r}
+A <- renewSlot(A, "b_SpecificParameters@depnt_var_min_max_dbl", c(0.03,1)) %>% # Should be linked to ScorzClass
+  renewSlot("b_SpecificParameters@candidate_predrs_chr", c("K10", "MLT", "SOFAS")) %>%
+  renewSlot("b_SpecificParameters@candidate_covars_chr", c("d_gender", "d_age",  #"d_sexual_ori_s", 
+                                                           "d_ATSI","CALD",
+                                                           "c_days_cut_back",   "c_days_unable", 
+                                                           #"d_studying_working", 
+                                                           "c_p_diag_s" #"c_clinical_staging_s",
+                                                          # "SOFAS"
+                                                           )) %>%
+  renewSlot("b_SpecificParameters@descv_var_nms_chr", c("d_age","d_gender",
+                                                        "c_days_cut_back",   "c_days_unable", 
+                                                        "d_employment_type","d_studying",#"d_studying_working", 
+                                                        "c_p_diag_s", #"c_clinical_staging_s",
+                                                        "s_IRSD","s_remoteness"
+                                                        #"SOFAS"
+                                                        )) 
+# %>%  renewSlot("b_SpecificParameters@msrmnt_date_var_nm_1L_chr", "d_interview_date") 
+```
+
+## Create local workspace
+We add details of the directory where data generated by our analysis will be written. Note, if using real data **this must be a secure location** as copies of the dataset will be saved in this directory.
+
+```{r}
+A <-  renewSlot(A, "b_SpecificParameters@fake_1L_lgl", T#ifelse(is.na(path_to_data_1L_chr),T,F)
+                ) 
+```
+```{r}
+A <- renewSlot(A, "c_SpecificProject", SpecificModels(a_YouthvarsProfile = A@a_ScorzProfile@a_YouthvarsProfile,
+                                                      b_SpecificParameters = A@b_SpecificParameters,
+                                                      paths_chr = {
+                                                        if(is.na(path_to_data_1L_chr)){
+                                                          tempdir()
+                                                          }else{
+                                                           normalizePath("../Data")
+                                                          }
+                                                        })) 
+```
+
+We confirm that our parameters and dataset are internally consistent. This step will also rename dataset variables that use certain incompatible naming conventions.
+
+```{r}
+A <- ratifySlot(A, "c_SpecificProject")
 ```
