@@ -175,5 +175,43 @@ A <- renewSlot(A, "c_SpecificProject", SpecificModels(a_YouthvarsProfile = A@a_S
 We confirm that our parameters and dataset are internally consistent. This step will also rename dataset variables that use certain incompatible naming conventions.
 
 ```{r}
-A <- ratifySlot(A, "c_SpecificProject")
+A@c_SpecificProject <- ratify_SpecificModels(A@c_SpecificProject) # Delete when Specific library is updated
+#A <- ratifySlot(A, "c_SpecificProject")
+```
+
+We now begin to create sub-directories of the nominated output data directory.
+
+```{r}
+A <- renewSlot(A, "c_SpecificProject", 
+               authorSlot(A, "c_SpecificProject", what_1L_chr = "workspace"))
+```
+
+We now generate tables and charts that describe our dataset. These are saved in a sub-directory of our output data directory.
+
+```{r message=FALSE, results='hide', warning=FALSE}
+A <- renewSlot(A, "c_SpecificProject",
+               authorSlot(A, "c_SpecificProject", what_1L_chr = "descriptives",
+                          digits_1L_int = 3L))
+```
+
+## Undertake exploratory modelling using baseline dataset
+
+### Identify preferred model types
+We next compare the performance of different model types. This step saves model objects and plots to a sub-directory of our output directory.
+
+```{r message=FALSE, results='hide', warning=FALSE}
+A <- renewSlot(A, "c_SpecificProject",
+               investigateSlot(A, "c_SpecificProject",
+                               depnt_var_max_val_1L_dbl = 0.99,
+                               session_ls = sessionInfo()))
+```
+
+After inspecting the output of the previous command, we can now specify the preferred model types to use from this point onwards.
+
+```{r message=FALSE, results='hide', warning=FALSE}
+A <- renewSlot(A, "c_SpecificProject",
+               renew(procureSlot(A, "c_SpecificProject"),
+                     new_val_xx = c("GLM_GSN_LOG", "OLS_CLL"),
+                     type_1L_chr = "results",
+                     what_1L_chr = "prefd_mdls"))
 ```
