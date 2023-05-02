@@ -190,8 +190,14 @@ We now generate tables and charts that describe our dataset. These are saved in 
 
 ```{r message=FALSE, results='hide', warning=FALSE}
 A <- renewSlot(A, "c_SpecificProject",
-               authorSlot(A, "c_SpecificProject", what_1L_chr = "descriptives",
-                          digits_1L_int = 3L))
+               # authorSlot(A, "c_SpecificProject", 
+               #            what_1L_chr = "descriptives",
+               #            digits_1L_int = 3L)
+               author_SpecificModels(A@c_SpecificProject,
+                                     what_1L_chr = "descriptives",
+                                     digits_1L_int = 3L)
+               
+               )
 ```
 
 ## Undertake exploratory modelling using baseline dataset
@@ -201,17 +207,113 @@ We next compare the performance of different model types. This step saves model 
 
 ```{r message=FALSE, results='hide', warning=FALSE}
 A <- renewSlot(A, "c_SpecificProject",
-               investigateSlot(A, "c_SpecificProject",
-                               depnt_var_max_val_1L_dbl = 0.99,
-                               session_ls = sessionInfo()))
+               investigate_SpecificModels(A@c_SpecificProject,
+                                          depnt_var_max_val_1L_dbl = 0.99,
+                                          session_ls = sessionInfo())
+               # investigateSlot(A, "c_SpecificProject",
+               #                 depnt_var_max_val_1L_dbl = 0.99,
+               #                 session_ls = sessionInfo())
+               )
 ```
+
+```{r}
+# Note you can inspect the performance of models by uncommenting the following:
+# exhibitSlot(A,"c_SpecificProject",
+#         what_1L_chr = "mdl_cmprsn",
+#         type_1L_chr = "results"
+#         ) 
+```
+
+```{r}
+# To get the codes for the top performing models of each type you can uncomment the following code:
+# procureSlot(A,"c_SpecificProject",
+#         use_procure_mthd_1L_lgl = T,
+#         what_1L_chr = "prefd_mdls")
+```
+
+```{r}
+# If these are not the models you plan on using you can look up the codes from a table displayed when uncommenting and running the following:
+#A@b_SpecificParameters@candidate_mdls_lup[,1:2]
+```
+
 
 After inspecting the output of the previous command, we can now specify the preferred model types to use from this point onwards.
 
 ```{r message=FALSE, results='hide', warning=FALSE}
 A <- renewSlot(A, "c_SpecificProject",
                renew(procureSlot(A, "c_SpecificProject"),
-                     new_val_xx = c("GLM_GSN_LOG", "OLS_CLL"),
+                     new_val_xx = c("GLM_GSN_LOG", "OLS_CLL"), # Replace these codes as needed - see previous commented code.
                      type_1L_chr = "results",
                      what_1L_chr = "prefd_mdls"))
 ```
+
+### Identify preferred predictors and covariates
+Next we assess multiple versions of our preferred model type - one single predictor model for each of our candidate predictors and the same models with candidate covariates added. A number of model/plot objects saved to a sub-directory of our output directory.
+
+```{r message=FALSE, results='hide', warning=FALSE}
+A <- renewSlot(A, "c_SpecificProject",
+               #investigateSlot(A,"c_SpecificProject")
+               investigate_SpecificPredictors(A@c_SpecificProject)
+               )
+```
+
+
+```{r}
+# Uncommenting the following code will allow inspection of the performance of the predictors.
+# exhibit(A@c_SpecificProject,
+#         what_1L_chr = "predr_cmprsn",
+#         type_1L_chr = "results",
+#         scroll_box_args_ls = list(width = "100%"))
+```
+
+```{r}
+# Uncommenting the following code will allow inspection of additional performance indictors of the predictors.
+# exhibit(A@c_SpecificProject,
+#         type_1L_chr = "results",
+#         what_1L_chr = "fxd_sngl_cmprsn")
+```
+
+```{r}
+# Uncommenting the following code will allow identification of significant covatiates.
+# exhibit(A@c_SpecificProject,
+#         type_1L_chr = "results",
+#         what_1L_chr = "fxd_full_cmprsn",
+#         scroll_box_args_ls = list(width = "100%"))
+```
+```{r}
+# Covariates that were significant in all models can be returned by uncommenting the following
+# procure(A@c_SpecificProject,
+#         type_1L_chr = "results",
+#         what_1L_chr = "signt_covars")
+```
+
+
+### Assess performance of final model specification 
+After reviewing the output of the previous step, we specify the covariates we wish to add to the models.
+
+```{r message=FALSE, results='hide', warning=FALSE}
+A <- renewSlot(A, "c_SpecificProject",
+               renew(procureSlot(A, "c_SpecificProject"),
+                     new_val_xx = c("dage", "cdayscutback", "cdaysunable" ), # Modify based on manual inspection in previous steps.
+                     type_1L_chr = "results",
+                     what_1L_chr = "prefd_covars"))
+```
+
+We now assess the multivariate models.  More model/plot objects are saved to a sub-directory of our output directory.
+
+```{r message=FALSE, results='hide', warning=FALSE}
+A <- renewSlot(A, "c_SpecificProject",
+               investigateSlot(A, "c_SpecificProject"))
+```
+
+## Undertake longitudinal modelling
+We next reformulate the models we finalised in the previous step so that they are suitable for modelling longitudinal change.
+
+### Primary analysis
+For our primary analysis, we use the longitudinal formulation of the models we previously selected. A series of large model files are written to a sub-directory of the local output data directory.
+
+```{r }
+A <- renewSlot(A, "c_SpecificProject",
+               investigateSlot(A, "c_SpecificProject"))
+```
+
