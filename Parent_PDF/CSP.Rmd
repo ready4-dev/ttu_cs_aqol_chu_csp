@@ -274,7 +274,7 @@ A <- renewSlot(A, "c_SpecificProject",
 ```
 
 ```{r}
-# Uncommenting the following code will allow identification of significant covatiates.
+# Uncommenting the following code will allow identification of significant covariates.
 # exhibit(A@c_SpecificProject,
 #         type_1L_chr = "results",
 #         what_1L_chr = "fxd_full_cmprsn",
@@ -294,7 +294,7 @@ After reviewing the output of the previous step, we specify the covariates we wi
 ```{r message=FALSE, results='hide', warning=FALSE}
 A <- renewSlot(A, "c_SpecificProject",
                renew(procureSlot(A, "c_SpecificProject"),
-                     new_val_xx = c("dage", "cdayscutback", "cdaysunable" ), # Modify based on manual inspection in previous steps.
+                     new_val_xx = c("dage", "cdayscutback", "cdaysunable"), # Modify based on manual inspection in previous steps.
                      type_1L_chr = "results",
                      what_1L_chr = "prefd_covars"))
 ```
@@ -306,14 +306,56 @@ A <- renewSlot(A, "c_SpecificProject",
                investigateSlot(A, "c_SpecificProject"))
 ```
 
-## Undertake longitudinal modelling
-We next reformulate the models we finalised in the previous step so that they are suitable for modelling longitudinal change.
+## Create bayesian models for use in prediction
+We next reformulate the models we finalised in the previous step as bayesian models that we will use when making predictions.
 
 ### Primary analysis
+We first modify the default parameters used when creating the models to address potential convergence issues.
+
+```{r}
+A <- renewSlot(A,"c_SpecificProject@b_SpecificParameters@control_ls", # This step may not be necessary on the real data.
+               new_val_xx = list(adapt_delta = 0.95))
+```
+
+
 For our primary analysis, we use the longitudinal formulation of the models we previously selected. A series of large model files are written to a sub-directory of the local output data directory.
 
 ```{r }
 A <- renewSlot(A, "c_SpecificProject",
-               investigateSlot(A, "c_SpecificProject"))
+               investigate_SpecificMixed(A@c_SpecificProject)
+               #investigateSlot(A, "c_SpecificProject")
+               )
 ```
 
+```{r}
+#make_predr_vars_nms_ls needs updating! Only creating models with first significant covariate.
+```
+
+### Secondary analyses
+
+For our secondary analyses, we will run our analysis algorithm using CHU-9D as a predictor for AQoL-6D.
+```{r}
+A@c_SpecificProject@a_YouthvarsProfile@a_Ready4useDyad@ds_tb <- A@c_SpecificProject@a_YouthvarsProfile@a_Ready4useDyad@ds_tb %>%dplyr::rename(CHU9D = chu9_total_w)
+
+```
+
+
+
+```{r }
+A <- renewSlot(A, "c_SpecificProject",
+               investigate_SpecificMixed(A@c_SpecificProject,
+               #investigateSlot(A, "c_SpecificProject",
+                               scndry_anlys_params_ls = make_scndry_anlys_params(candidate_predrs_chr = c("chu9_total_w"),
+                                                                                 candidate_covar_nms_chr = c("dage", "cdayscutback", "cdaysunable"),
+                                                                                 prefd_covars_chr = NA_character_,
+                                                                                 predictors_lup = A@b_SpecificParameters@predictors_lup %>%
+                                                                                   specific::renew.specific_predictors(short_name_chr = "CHU9D",
+                                                                                                                       long_name_chr = "CHU-9D utility",
+                                                                                                                       min_val_dbl = 0,
+                                                                                                                       max_val_dbl = 0,
+                                                                                                                       class_chr = "numeric",
+                                                                                                                       increment_dbl = 0.05,
+                                                                                                                       class_fn_chr = "as.double",
+                                                                                                                       mdl_scaling_dbl = 1,
+                                                                                                                       covariate_lgl = F))))
+```
