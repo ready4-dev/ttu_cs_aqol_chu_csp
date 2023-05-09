@@ -336,16 +336,17 @@ A <- renewSlot(A, "c_SpecificProject",
 For our secondary analyses, we will run our analysis algorithm using CHU-9D as a predictor for AQoL-6D.
 ```{r}
 A@c_SpecificProject@a_YouthvarsProfile@a_Ready4useDyad@ds_tb <- A@c_SpecificProject@a_YouthvarsProfile@a_Ready4useDyad@ds_tb %>%dplyr::rename(CHU9D = chu9_total_w)
-
+A@c_SpecificProject@a_YouthvarsProfile@a_Ready4useDyad@dictionary_r3 <- renew.ready4use_dictionary(A@c_SpecificProject@a_YouthvarsProfile@a_Ready4useDyad@dictionary_r3 %>% renew.ready4use_dictionary(filter_cdn_1L_chr = "var_nm_chr != 'chu9_total_w'"), var_nm_chr = "CHU9D", var_ctg_chr = "health_utility", var_desc_chr = "Child Health Utility (9 Dimension) total score", var_type_chr = "double")
+A@c_SpecificProject@c_SpecificResults@b_SpecificPrivate@private_outp_ls$scored_data_tb <- A@c_SpecificProject@c_SpecificResults@b_SpecificPrivate@private_outp_ls$scored_data_tb %>% dplyr::rename(CHU9D = chu9_total_w)
+A@c_SpecificProject@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$dictionary_tb <- renew.ready4use_dictionary(A@c_SpecificProject@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$dictionary_tb %>% renew.ready4use_dictionary(filter_cdn_1L_chr = "var_nm_chr != 'chu9_total_w'"), var_nm_chr = "CHU9D", var_ctg_chr = "health_utility", var_desc_chr = "Child Health Utility (9 Dimension) total score", var_type_chr = "double")
 ```
-
 
 
 ```{r }
 A <- renewSlot(A, "c_SpecificProject",
                investigate_SpecificMixed(A@c_SpecificProject,
                #investigateSlot(A, "c_SpecificProject",
-                               scndry_anlys_params_ls = make_scndry_anlys_params(candidate_predrs_chr = c("chu9_total_w"),
+                               scndry_anlys_params_ls = make_scndry_anlys_params(candidate_predrs_chr = c("CHU9D"),
                                                                                  candidate_covar_nms_chr = c("dage", "cdayscutback", "cdaysunable"),
                                                                                  prefd_covars_chr = NA_character_,
                                                                                  predictors_lup = A@b_SpecificParameters@predictors_lup %>%
@@ -358,4 +359,64 @@ A <- renewSlot(A, "c_SpecificProject",
                                                                                                                        class_fn_chr = "as.double",
                                                                                                                        mdl_scaling_dbl = 1,
                                                                                                                        covariate_lgl = F))))
+```
+
+# Report and disseminate findings
+
+## Create shareable models
+The model objects created and saved in our working directory by the preceding steps are not suitable for public dissemination. They are both too large in file size and, more importantly, include copies of our source dataset. We can overcome these limitations by creating shareable versions of the models. Two types of shareable version are created - copies of the original model objects in which fake data overwrites the original source data and tables of model coefficients.
+
+```{r}
+A <- renewSlot(A, "c_SpecificProject",
+               authorData_SpecificMixed(procureSlot(A, "c_SpecificProject"))) #authorData
+```
+
+# Specify study reporting metadata
+We create a `TTUSynopsis` object that contains the fields necessary to render and share reports.
+
+```{r}
+A <- renewSlot(A, "d_TTUReports",
+               {
+                 Y <- metamorphoseSlot(A, "c_SpecificProject")
+                 Y <- TTUSynopsis(a_Ready4showPaths = Y@a_Ready4showPaths,
+                                  b_SpecificResults = Y@b_SpecificResults,
+                                  c_SpecificParameters = Y@c_SpecificParameters,
+                                  d_YouthvarsProfile = Y@d_YouthvarsProfile,
+                                  rmd_fl_nms_ls = Y@rmd_fl_nms_ls)
+                 Y <- TTUReports(a_TTUSynopsis = Y)
+                 Y
+                 }
+               )
+```
+
+We add metadata relevant to the reports that we will be generating to these fields. Note that the data we supply to the Ready4useRepos module below must relate to a repository to which we have write permissions (otherwise subsequent steps will fail). If you do not have write permissions to the dataverse dataset specified below, you can instead supply values relating to a repository that you do have write permissions to. Alternatively, you can skip any subsequent `share` or `shareSlot` commands that involve writing data to the online data repository.
+
+```{r eval =F}
+A <- renewSlot(A, "d_TTUReports@a_TTUSynopsis",
+               procureSlot(A, "d_TTUReports@a_TTUSynopsis") %>% 
+                 renewSlot("authors_r3", 
+                           {if(A@b_SpecificParameters@fake_1L_lgl){ready4show::authors_tb}else{read.csv("CSVs/Authors.csv") %>% 
+                               tibble::as_tibble() %>% ready4show::ready4show_authors()}}) %>%
+                 renewSlot("institutes_r3", 
+                           {if(A@b_SpecificParameters@fake_1L_lgl){ready4show::institutes_tb }else{
+                               read.csv("CSVs/Institutes.csv") %>% tibble::as_tibble() %>% ready4show::ready4show_institutes()}}) %>%
+                 renewSlot("digits_int", c(3L,3L)) %>%
+                 renewSlot("outp_formats_chr", c("PDF","PDF")) %>%
+                 renewSlot("title_1L_chr", 
+                           ifelse(A@b_SpecificParameters@fake_1L_lgl,"A hypothetical study using fake data",
+                                  "Mapping psychological distress and functioning measures to adolescent AQoL-6D utility using data from a sample of young people presenting to primary mental health services")) %>%
+                 #renewSlot("correspondences_r3", old_nms_chr = c("PHQ9", "GAD7"), new_nms_chr = c("PHQ-9", "GAD-7")) %>%
+                 renewSlot("e_Ready4useRepos", 
+                           Ready4useRepos(dv_nm_1L_chr = "TTU", 
+                                          dv_ds_nm_1L_chr = ifelse(A@b_SpecificParameters@fake_1L_lgl,"https://doi.org/10.7910/DVN/LYBMB0", "https://doi.org/10.7910/DVN/FDRUXH"), 
+                                          dv_server_1L_chr = "dataverse.harvard.edu"))) 
+```
+
+## Describe and share models
+
+### Author model catalogues
+We download a program for generating a catalogue of models and use it to summarising the models created under each study analysis (one primary and two secondary). The catalogues are saved locally.
+
+```{r}
+authorSlot(A, "d_TTUReports", what_1L_chr = "Catalogue", download_tmpl_1L_lgl = T, subtitle_1L_chr: "Catalogue of models")
 ```

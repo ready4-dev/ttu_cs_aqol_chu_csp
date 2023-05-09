@@ -1,13 +1,10 @@
 first_nm_chr,middle_nm_chr,last_nm_chr,title_chr,qualifications_chr,institute_chr,sequence_int,is_corresponding_lgl,email_chr,is_equal_first_lgl
-Matthew,Phillip,Hamilton,Mr,"""BBS, MSC""","""Orygen""",1,TRUE,matthew.hamilton@orygen.org.au,TRUE
-Caroline,X,Gao,Dr,"""BEng, MBiostatistics, PhD""","""Orygen, CYMH, Monash""",2,FALSE,caroline.gao@orygen.org.au,TRUE
+Matthew,Phillip,Hamilton,Mr,"""BBS, MSC""","""Orygen, Monash""",1,TRUE,matthew.hamilton@orygen.org.au,FALSE
+Caroline,X,Gao,Dr,"""BEng, MBiostatistics, PhD""","""Orygen, CYMH, Monash""",2,FALSE,caroline.gao@orygen.org.au,FALSE
 Kate,Maree,Filia,Dr,"""BAppSci, PGradDip, PhD""","""Orygen, CYMH""",3,FALSE,kate.filia@orygen.org.au,FALSE
 Jana,Marcelle,Menssink,Dr,"""BA, PGDipPsych, Dpsych""","""Orygen, CYMH""",4,FALSE,jana.menssink@orygen.org.au,FALSE
-Sonia,,Sharmin,Dr,"""PhD""","""Orygen, CYMH""",5,FALSE,,FALSE
 Nic,,Telford,Mr,"""BSocSc, MSocSc""","""Headspace""",6,FALSE,NTelford@headspace.org.au,FALSE
-Helen,,Herrman,Prof,"""MD, MBBS, BMedSc""","""Orygen, CYMH""",7,FALSE,helen.herrman@orygen.org.au,FALSE
-Ian,B,Hickie,Prof,"""MD""","""Sydney""",8,FALSE,ian.hickie@sydney.edu.au,FALSE
-Cathrine,,Mihalopoulos,Prof,"""BBSc(Hons), GDEcSt, PGDHthEc, PhD""","""Monash""",9,FALSE,cathy.mihalopoulos@monash.edu,FALSE
 Debra,Janet,Rickwood,Prof,"""BA(Hons), PhD""","""Canberra, Headspace""",10,FALSE,DRickwood@headspace.org.au,FALSE
 Patrick,Dennistoun,McGorry,Prof,"""MD, BS, PhD, FRCP, FRANZCP, FAA, FASSA, FAHMS""","""Orygen, CYMH""",11,FALSE,pat.mcgorry@orygen.org.au,FALSE
+Cathrine,,Mihalopoulos,Prof,"""BBSc(Hons), GDEcSt, PGDHthEc, PhD""","""Monash""",9,FALSE,cathy.mihalopoulos@monash.edu,FALSE
 Sue,Maree,Cotton,Prof,"""BBSc(Hons), GradDipAppSc(Stats), MAppSci(Stats), PhD (Clinical Neuropsychology)""","""Orygen, CYMH""",12,FALSE,sue.cotton@orygen.org.au,FALSE

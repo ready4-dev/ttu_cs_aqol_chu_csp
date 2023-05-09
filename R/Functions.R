@@ -1,5 +1,5 @@
 ## For stand alone program
-make_csnl_example_dict <- function(ds_tb){
+make_csnl_example_dict <- function(ds_tb){ # Add days out of role, utility difference
   dictionary_r3 <- Ready4useRepos(dv_nm_1L_chr = "TTU",
                                   dv_ds_nm_1L_chr = "https://doi.org/10.7910/DVN/DKDIB0", 
                                   dv_server_1L_chr = "dataverse.harvard.edu") %>% 
@@ -651,6 +651,29 @@ write_descv_tbls <- function(data_tb,
   return(descv_tbl_ls)
 }
 # From specific
+authorData_SpecificMixed <- function(x,
+                                     title_1L_chr = "An R model object",
+                                     what_1L_chr = "Shareable"){
+  if(what_1L_chr == "Shareable"){
+    results_ls <- purrr::map(manufacture(x@c_SpecificResults,
+                                         what_1L_chr = "indexed_shareable"),
+                             ~{
+                               outp_smry_ls <- append(procureSlot(x,
+                                                                  "c_SpecificResults@b_SpecificPrivate@private_outp_ls"),
+                                                      .x)
+                               outp_smry_ls <- outp_smry_ls %>%
+                                 write_shareable_mdls(new_dir_nm_1L_chr = "G_Shareable",
+                                                      shareable_title_detail_1L_chr = title_1L_chr)
+                               
+                               outp_smry_ls[-1]
+                             })
+    x <- renewSlot(x,
+                   "c_SpecificResults@a_SpecificShareable@shareable_outp_ls",
+                   append(results_ls[[1]],
+                          results_ls[-1]))
+  }
+  return(x)
+}
 author_SpecificModels <- function(x,
                                   prefd_mdl_types_chr = NULL,
                                   what_1L_chr = "all",
@@ -720,6 +743,58 @@ author_SpecificModels <- function(x,
   }
   return(x)
 }
+author_SpecificSynopsis <- function(x,
+                                    reference_1L_int = NA_integer_,
+                                    type_1L_chr = "Report",
+                                    what_1L_chr = "Catalogue",
+                                    ...){
+  if(what_1L_chr == "Catalogue"){
+    outp_smry_ls_ls <- manufacture(x@b_SpecificResults,
+                                   what_1L_chr = "indexed_shareable")
+    refs_int <- 1:length(outp_smry_ls_ls)
+    if(!is.na(reference_1L_int)){
+      outp_smry_ls_ls <- outp_smry_ls_ls[reference_1L_int]
+      refs_int <- reference_1L_int
+    }
+    ctlg_nms_chr <- purrr::map2_chr(outp_smry_ls_ls,
+                                    refs_int,
+                                    ~ {
+                                      fl_nm_1L_chr <- paste0("AAA_TTU_MDL_CTG",
+                                                             ifelse(.y==1,
+                                                                    "",
+                                                                    paste0("-",(.y-1))))
+                                      authorReport(x %>%
+                                                     renewSlot("b_SpecificResults@a_SpecificShareable@shareable_outp_ls",
+                                                               .x),
+                                                   fl_nm_1L_chr = fl_nm_1L_chr,
+                                                   what_1L_chr = "Catalogue",
+                                                   ...)
+                                      fl_nm_1L_chr
+                                    }
+    )
+    # if(!is.na(x@e_Ready4useRepos@dv_ds_nm_1L_chr)){
+    #   ready4::write_to_dv_with_wait(dss_tb = tibble::tibble(ds_obj_nm_chr = ctlg_nms_chr,
+    #                                                         title_chr = purrr::map_chr(1:length(ctlg_nms_chr),
+    #                                                                                    ~ paste0("Catalogue of utility mapping models",
+    #                                                                                             ifelse(.x==1,
+    #                                                                                                    " (Primary Analysis)",
+    #                                                                                                    paste0(" (Supplementary Analysis ",
+    #                                                                                                           (.x-1),
+    #                                                                                                           ")"))))),
+    #                                 dv_nm_1L_chr = x@e_Ready4useRepos@dv_nm_1L_chr,
+    #                                 ds_url_1L_chr = x@e_Ready4useRepos@dv_ds_nm_1L_chr,
+    #                                 parent_dv_dir_1L_chr = paste0(x@b_SpecificResults@a_SpecificShareable@shareable_outp_ls$path_to_write_to_1L_chr,"/H_Dataverse"),
+    #                                 paths_to_dirs_chr = paste0(x@a_Ready4showPaths@outp_data_dir_1L_chr,
+    #                                                            "/",
+    #                                                            x@a_Ready4showPaths@reports_dir_1L_chr,
+    #                                                            "/",
+    #                                                            what_1L_chr),
+    #                                 inc_fl_types_chr = ".pdf",
+    #                                 paths_are_rltv_1L_lgl = F)
+    # }
+  }
+  
+}
 fit_ts_model_with_brm <- function (data_tb,# rename lngl ?
                                    depnt_var_nm_1L_chr, 
                                    family_fn_1L_chr,
@@ -764,6 +839,44 @@ investigate_SpecificModels <- function(x,
                                              dissemination_1L_chr = x@dissemination_1L_chr)
   return(x_SpecificPredictors)
   # }
+}
+make_fake_ts_data <- function (outp_smry_ls, # rename lngl
+                               depnt_vars_are_NA_1L_lgl = T)
+{
+  data_tb <- outp_smry_ls$scored_data_tb %>% transform_tb_to_mdl_inp(depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr,
+                                                                     predr_vars_nms_chr = outp_smry_ls$predr_vars_nms_ls %>% purrr::flatten_chr() %>% unique(),
+                                                                     id_var_nm_1L_chr = outp_smry_ls$id_var_nm_1L_chr, round_var_nm_1L_chr = outp_smry_ls$round_var_nm_1L_chr,
+                                                                     round_bl_val_1L_chr = outp_smry_ls$round_bl_val_1L_chr)
+  if(identical(outp_smry_ls$round_var_nm_1L_chr, character(0)) | ifelse(identical(outp_smry_ls$round_var_nm_1L_chr, character(0)),T,is.na(outp_smry_ls$round_var_nm_1L_chr))){
+    data_tb <- data_tb %>%
+      dplyr::select(-(outp_smry_ls$predr_vars_nms_ls %>% purrr::flatten_chr() %>% unique() %>% paste0("_change")))
+  }
+  fk_data_ls <- synthpop::syn(data_tb, visit.sequence = names(data_tb)[names(data_tb) !=
+                                                                         outp_smry_ls$id_var_nm_1L_chr], seed = outp_smry_ls$seed_1L_int)
+  fk_data_tb <- fk_data_ls$syn
+  if(identical(outp_smry_ls$round_var_nm_1L_chr, character(0)) | ifelse(identical(outp_smry_ls$round_var_nm_1L_chr, character(0)),T,is.na(outp_smry_ls$round_var_nm_1L_chr))){
+    fk_data_tb <- fk_data_tb %>%
+      dplyr::ungroup()
+  } else {
+    fk_data_tb <- fk_data_tb %>%
+      dplyr::mutate(!!rlang::sym(outp_smry_ls$round_var_nm_1L_chr) := as.character(!!rlang::sym(outp_smry_ls$round_var_nm_1L_chr))) %>%
+      dplyr::group_by(!!rlang::sym(outp_smry_ls$id_var_nm_1L_chr)) %>%
+      dplyr::mutate(!!rlang::sym(outp_smry_ls$round_var_nm_1L_chr) := !!rlang::sym(outp_smry_ls$round_var_nm_1L_chr) %>%
+                      transform_timepoint_vals(timepoint_levels_chr = outp_smry_ls$scored_data_tb %>%
+                                                 dplyr::pull(!!rlang::sym(outp_smry_ls$round_var_nm_1L_chr)) %>%
+                                                 unique(),
+                                               bl_val_1L_chr = outp_smry_ls$round_bl_val_1L_chr)
+      )%>%
+      dplyr::ungroup()
+  }
+  
+  if(depnt_vars_are_NA_1L_lgl){
+    depnt_vars_chr <- names(fk_data_tb)[names(fk_data_tb) %>%
+                                          purrr::map_lgl(~startsWith(.x, outp_smry_ls$depnt_var_nm_1L_chr))]
+    fk_data_tb <- fk_data_tb %>% dplyr::mutate(dplyr::across(dplyr::all_of(depnt_vars_chr),
+                                                             ~NA_real_))
+  }
+  return(fk_data_tb)
 }
 make_input_params <- function(ds_tb, # Generalise MAUI
                               ds_descvs_ls,
@@ -1352,7 +1465,181 @@ write_mdl_cmprsn <- function(scored_data_tb,
                         mdl_smry_ls = mdl_smry_ls)
   return(mdl_cmprsn_ls)
 }
-
+write_shareable_mdls <- function (outp_smry_ls,
+                                  new_dir_nm_1L_chr = "G_Shareable",
+                                  shareable_title_detail_1L_chr = "",
+                                  write_mdls_to_dv_1L_lgl = F)
+{
+  output_dir_chr <- write_shareable_dir(outp_smry_ls = outp_smry_ls,
+                                        new_dir_nm_1L_chr = new_dir_nm_1L_chr)
+  # incld_mdl_paths_chr <- outp_smry_ls$file_paths_chr %>%
+  #   purrr::map_chr(~{
+  #     file_path_1L_chr <- .x
+  #     mdl_fl_nms_chr <- paste0(outp_smry_ls$mdl_nms_ls %>% purrr::flatten_chr(),".RDS")
+  #     mdl_fl_nms_locn_ls <- mdl_fl_nms_chr %>% purrr::map(~stringr::str_locate(file_path_1L_chr,.x))
+  #     match_lgl <- mdl_fl_nms_locn_ls %>% purrr::map_lgl(~!(is.na(.x[[1,1]]) | is.na(.x[[1,2]])))
+  #     if(any(match_lgl)){
+  #       file_path_1L_chr
+  #     }else{
+  #       NA_character_
+  #     }
+  #   })
+  # incld_mdl_paths_chr <- incld_mdl_paths_chr[!is.na(incld_mdl_paths_chr)]
+  # ranked_mdl_nms_chr <- outp_smry_ls$mdl_nms_ls %>% purrr::flatten_chr()
+  # sorted_mdl_nms_chr <- sort(ranked_mdl_nms_chr)
+  # rank_indcs_int <- purrr::map_int(sorted_mdl_nms_chr,~which(ranked_mdl_nms_chr==.x))
+  # incld_mdl_paths_chr <- incld_mdl_paths_chr[order(rank_indcs_int)]
+  incld_mdl_paths_chr <- make_incld_mdl_paths(outp_smry_ls)
+  fake_ds_tb <- make_fake_ts_data(outp_smry_ls, depnt_vars_are_NA_1L_lgl = F)
+  mdl_types_lup <- outp_smry_ls$mdl_types_lup
+  shareable_mdls_ls <- outp_smry_ls$mdl_nms_ls %>% purrr::flatten_chr() %>%
+    purrr::map2(incld_mdl_paths_chr, ~{
+      model_mdl <- readRDS(paste0(outp_smry_ls$path_to_write_to_1L_chr,"/",.y))
+      
+      mdl_smry_tb <- outp_smry_ls$mdls_smry_tb %>% dplyr::filter(Model ==
+                                                                   .x)
+      mdl_nm_1L_chr <- .x
+      mdl_type_1L_chr <- get_mdl_type_from_nm(mdl_nm_1L_chr,
+                                              mdl_types_lup = mdl_types_lup)
+      tfmn_1L_chr <- ready4::get_from_lup_obj(mdl_types_lup,
+                                              match_value_xx = mdl_type_1L_chr,
+                                              match_var_nm_1L_chr = "short_name_chr",
+                                              target_var_nm_1L_chr = "tfmn_chr",
+                                              evaluate_1L_lgl = F)
+      predn_type_1L_chr <- ready4::get_from_lup_obj(mdl_types_lup,
+                                                    match_value_xx = mdl_type_1L_chr,
+                                                    match_var_nm_1L_chr = "short_name_chr",
+                                                    target_var_nm_1L_chr = "predn_type_chr",
+                                                    evaluate_1L_lgl = F)
+      if (is.na(predn_type_1L_chr))
+        predn_type_1L_chr <- NULL
+      control_1L_chr <- ready4::get_from_lup_obj(mdl_types_lup,
+                                                 match_value_xx = mdl_type_1L_chr,
+                                                 match_var_nm_1L_chr = "short_name_chr",
+                                                 target_var_nm_1L_chr = "control_chr",
+                                                 evaluate_1L_lgl = F)
+      sd_dbl <- mdl_smry_tb %>%
+        dplyr::filter(Parameter == "SD (Intercept)") %>%
+        dplyr::select(Estimate, SE) %>%
+        t() %>%
+        as.vector()
+      mdl_fake_ds_tb <- fake_ds_tb %>%
+        add_tfd_var_to_ds(depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr,
+                          tfmn_1L_chr = tfmn_1L_chr,
+                          depnt_var_max_val_1L_dbl = 0.999) %>%
+        dplyr::select(names(model_mdl$data))
+      model_mdl$data <- mdl_fake_ds_tb
+      table_predn_mdl <- make_shareable_mdl(fake_ds_tb = mdl_fake_ds_tb,
+                                            mdl_smry_tb = mdl_smry_tb, depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr,
+                                            id_var_nm_1L_chr = outp_smry_ls$id_var_nm_1L_chr,
+                                            tfmn_1L_chr = tfmn_1L_chr,
+                                            mdl_type_1L_chr = mdl_type_1L_chr,
+                                            mdl_types_lup = mdl_types_lup,
+                                            control_1L_chr = control_1L_chr,
+                                            start_1L_chr = NA_character_,
+                                            seed_1L_int = outp_smry_ls$seed_1L_int)
+      saveRDS(table_predn_mdl, paste0(output_dir_chr[4], "/", .x,
+                                      ".RDS"))
+      saveRDS(model_mdl, paste0(output_dir_chr[3], "/", .x,
+                                ".RDS"))
+      scaling_fctr_dbl <- make_scaling_fctr_dbl(outp_smry_ls)
+      # outp_smry_ls$predr_vars_nms_ls %>%
+      # purrr::flatten_chr() %>%
+      # unique() %>%
+      # purrr::map_dbl(~ ifelse(.x %in% outp_smry_ls$predictors_lup$short_name_chr,
+      #                         ready4::get_from_lup_obj(outp_smry_ls$predictors_lup,
+      #                                                     target_var_nm_1L_chr = "mdl_scaling_dbl",
+      #                                                     match_value_xx = .x,
+      #                                                     match_var_nm_1L_chr = "short_name_chr",
+      #                                                     evaluate_1L_lgl = F),
+      #                         1))
+      write_ts_mdl_plts(brms_mdl = model_mdl,
+                        table_predn_mdl = table_predn_mdl,
+                        tfd_data_tb = outp_smry_ls$scored_data_tb %>%
+                          transform_tb_to_mdl_inp(depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr,
+                                                  predr_vars_nms_chr = outp_smry_ls$predr_vars_nms_ls %>% purrr::flatten_chr() %>% unique(),
+                                                  id_var_nm_1L_chr = outp_smry_ls$id_var_nm_1L_chr,
+                                                  round_var_nm_1L_chr = outp_smry_ls$round_var_nm_1L_chr,
+                                                  round_bl_val_1L_chr = outp_smry_ls$round_bl_val_1L_chr,
+                                                  scaling_fctr_dbl = scaling_fctr_dbl),
+                        depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr,
+                        mdl_nm_1L_chr = mdl_nm_1L_chr,
+                        path_to_write_to_1L_chr = output_dir_chr[3],
+                        predn_type_1L_chr = predn_type_1L_chr,
+                        round_var_nm_1L_chr = outp_smry_ls$round_var_nm_1L_chr,
+                        sd_dbl = sd_dbl,
+                        sfx_1L_chr = " from table",
+                        tfmn_1L_chr = tfmn_1L_chr,
+                        utl_min_val_1L_dbl = ifelse(!is.null(outp_smry_ls$utl_min_val_1L_dbl),
+                                                    outp_smry_ls$utl_min_val_1L_dbl,
+                                                    -1))
+      table_predn_mdl
+    }) %>% stats::setNames(outp_smry_ls$mdl_nms_ls %>% purrr::flatten_chr())
+  outp_smry_ls$shareable_mdls_ls <- shareable_mdls_ls
+  outp_smry_ls$shareable_mdls_tb <-  NULL
+  ingredients_ls <- list(depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr,
+                         dictionary_tb = outp_smry_ls$dictionary_tb %>%
+                           dplyr::filter(var_nm_chr %in% names(fake_ds_tb)),
+                         id_var_nm_1L_chr = outp_smry_ls$id_var_nm_1L_chr,
+                         fake_ds_tb = fake_ds_tb,
+                         mdls_lup = outp_smry_ls$shareable_mdls_ls %>%
+                           purrr::map2_dfr(names(outp_smry_ls$shareable_mdls_ls),
+                                           ~{
+                                             if(inherits(.x,"betareg")){
+                                               coeffs_dbl <- .x$coefficients$mean
+                                             }else{
+                                               coeffs_dbl <- .x$coefficients
+                                             }
+                                             mdl_type_1L_chr = get_mdl_type_from_nm(.y,
+                                                                                    mdl_types_lup = outp_smry_ls$mdl_types_lup)
+                                             tibble::tibble(mdl_nms_chr = .y) %>%
+                                               dplyr::mutate(predrs_ls = list(coeffs_dbl %>%
+                                                                                names() %>%
+                                                                                stringr::str_remove_all("_change") %>%
+                                                                                stringr::str_remove_all("_baseline") %>%
+                                                                                unique() %>%
+                                                                                purrr::discard(~ .x== "(Intercept)")),
+                                                             mdl_type_chr = mdl_type_1L_chr,
+                                                             tfmn_chr = ready4::get_from_lup_obj(outp_smry_ls$mdl_types_lup,
+                                                                                                 match_value_xx = mdl_type_1L_chr,
+                                                                                                 match_var_nm_1L_chr = "short_name_chr",
+                                                                                                 target_var_nm_1L_chr = "tfmn_chr",
+                                                                                                 evaluate_1L_lgl = F))
+                                           }), #
+                         mdls_smry_tb = outp_smry_ls$mdls_smry_tb,#
+                         mdl_types_lup = mdl_types_lup,
+                         # predictors_tb = mdl_ingredients_ls$dictionary_tb %>%
+                         #   dplyr::filter(var_nm_chr %in% (outp_smry_ls$predr_vars_nms_ls %>%
+                         #                                    purrr::flatten_chr() %>% unique())),#
+                         predictors_lup = outp_smry_ls$predictors_lup,#
+                         round_var_nm_1L_chr = outp_smry_ls$round_var_nm_1L_chr,
+                         seed_1L_int = outp_smry_ls$seed_1L_int,
+                         utl_min_val_1L_dbl = ifelse(!is.null(outp_smry_ls$utl_min_val_1L_dbl),
+                                                     outp_smry_ls$utl_min_val_1L_dbl,
+                                                     -1))
+  saveRDS(ingredients_ls, paste0(output_dir_chr[2], "/mdl_ingredients",
+                                 ".RDS"))
+  outp_smry_ls <- write_mdls_to_dv(outp_smry_ls,
+                                   new_dir_nm_1L_chr = new_dir_nm_1L_chr,
+                                   shareable_title_detail_1L_chr = shareable_title_detail_1L_chr,
+                                   output_dir_chr = output_dir_chr)
+  # if (!is.null(outp_smry_ls$dv_ls)) {
+  #   write_shareable_mdls_to_dv(outp_smry_ls,
+  #                              new_dir_nm_1L_chr = new_dir_nm_1L_chr,
+  #                              share_ingredients_1L_lgl = T,
+  #                              output_dir_chr = output_dir_chr)
+  #   if(write_mdls_to_dv_1L_lgl){
+  #     outp_smry_ls$shareable_mdls_tb <- write_shareable_mdls_to_dv(outp_smry_ls,
+  #                                                                  new_dir_nm_1L_chr = new_dir_nm_1L_chr,
+  #                                                                  shareable_title_detail_1L_chr = shareable_title_detail_1L_chr,
+  #                                                                  share_ingredients_1L_lgl = F,
+  #                                                                  output_dir_chr = output_dir_chr)
+  #   }
+  #
+  # }
+  # outp_smry_ls$shareable_mdls_tb <- shareable_mdls_tb
+  return(outp_smry_ls)
+}
 #### FROM THIS POINT ON IS TEMPORARY AND NOT FOR EXPORT
 
 renew_ScorzAqol6Adol <- function(x, # DO NOT EXPORT TO SCORZ LIBRARY
@@ -1871,7 +2158,7 @@ write_ts_mdl_plts <- function (brms_mdl, # Rename lngl
                                                   is_brms_mdl_1L_lgl = inherits(brms_mdl,"brmsfit"),
                                                   predn_type_1L_chr = predn_type_1L_chr,
                                                   sd_dbl = NA_real_,
-                                                  sfx_1L_chr = ifelse(is.null(table_predn_mdl),#!is.null(table_predn_mdl),
+                                                  sfx_1L_chr = ifelse(inherits(brms_mdl,"brmsfit"),#!is.null(table_predn_mdl),
                                                                       " from brmsfit",
                                                                       sfx_1L_chr),
                                                   tfmn_1L_chr = tfmn_1L_chr,
@@ -1905,14 +2192,19 @@ write_ts_mdl_plts <- function (brms_mdl, # Rename lngl
           plot(brms_mdl, ask = F, plot = F)[idx_1L_int]
         }
       }
-    }
-    else {
+    }  else {
       plot_fn_and_args_ls <- make_plot_fn_and_args_ls(tfd_data_tb = tfd_data_tb,
                                                       args_ls = args_ls,
                                                       depnt_var_nm_1L_chr = depnt_var_nm_1L_chr,
                                                       depnt_var_desc_1L_chr = depnt_var_desc_1L_chr,
                                                       round_var_nm_1L_chr = round_var_nm_1L_chr,
-                                                      sfx_1L_chr = sfx_1L_chr,
+                                                      sfx_1L_chr = ifelse(is.null(table_predn_mdl),#!is.null(table_predn_mdl),
+                                                                          ifelse(inherits(brms_mdl,"brmsfit"),#!is.null(table_predn_mdl),
+                                                                                 " from brmsfit",
+                                                                                 sfx_1L_chr),#" from brmsfit",
+                                                                          ifelse(is.null(brms_mdl),#!is.null(brms_mdl)
+                                                                                 " from table",
+                                                                                 sfx_1L_chr)),
                                                       table_predn_mdl = table_predn_mdl,
                                                       tfmn_1L_chr = tfmn_1L_chr,
                                                       type_1L_chr = c("coefs", "hetg",
@@ -1995,4 +2287,112 @@ write_ts_mdl_plts <- function (brms_mdl, # Rename lngl
     stats::setNames(plt_nms_chr[ifelse(inherits(brms_mdl,"brmsfit"),1,3):10]) %>%
     purrr::discard(is.na)
   return(mdl_plts_paths_ls)
+}
+author_TTUReports <- function(x,
+                              depnt_var_desc_1L_chr = NA_character_,
+                              download_tmpl_1L_lgl = T,
+                              fl_type_1L_chr = ".eps",
+                              timepoint_new_nms_chr = NA_character_,
+                              type_1L_chr = "Report",
+                              what_1L_chr = NA_character_){
+  if(type_1L_chr == "Report"){
+    if(download_tmpl_1L_lgl){
+      authorData(x@a_TTUSynopsis,
+                 tmpl_url_1L_chr = ifelse(what_1L_chr == "Catalogue",
+                                          x@catalogue_tmpl_chr[1],
+                                          x@manuscript_tmpl_chr[1]),
+                 tmpl_version_1_L_chr = ifelse(what_1L_chr == "Catalogue",
+                                               x@catalogue_tmpl_chr[2],
+                                               x@manuscript_tmpl_chr[2]),
+                 what_1L_chr = what_1L_chr)
+    }
+    if(what_1L_chr == "Catalogue"){
+      x@a_TTUSynopsis@rmd_fl_nms_ls <- x@catalogue_fl_nms_ls
+    }else{
+      x@a_TTUSynopsis@rmd_fl_nms_ls <- x@manuscript_fl_nms_ls
+    }
+    if(what_1L_chr == "Catalogue"){
+      author(x@a_TTUSynopsis,
+             type_1L_chr = "Report",
+             what_1L_chr = what_1L_chr)
+    }else{
+      authorReport(x@a_TTUSynopsis,
+                   what_1L_chr = what_1L_chr)
+    }
+  }else{
+    dir_1L_chr <- paste0(x@a_TTUSynopsis@a_Ready4showPaths@outp_data_dir_1L_chr,
+                         "/",
+                         x@a_TTUSynopsis@a_Ready4showPaths@mkdn_data_dir_1L_chr,
+                         "/",
+                         what_1L_chr)
+    if(type_1L_chr == "Dependencies"){
+      df <- data.frame(Package = c("youthvars","scorz","specific","TTU") %>%
+                         purrr::map(~ {
+                           utils::packageDescription(.x) %>%
+                             `[`(c("Depends", "Imports")) %>%
+                             purrr::map(~{
+                               if(is.null(.x)){
+                                 character(0)
+                               }else{
+                                 .x %>%
+                                   strsplit(",\\n") %>%
+                                   purrr::flatten_chr() %>%
+                                   purrr::map(~strsplit(.x,", ") %>%
+                                                purrr::flatten_chr()) %>%
+                                   purrr::flatten_chr() %>% sort() %>%
+                                   purrr::discard(~startsWith(.x,"R "))
+                               }
+                             }) %>%
+                             purrr::flatten_chr() %>%
+                             unique() %>%
+                             sort()
+                         }) %>%
+                         purrr::reduce(~c(.x,.y)) %>%
+                         purrr::map_chr(~{
+                           updated_1L_chr <- stringr::str_replace_all(.x,"\\n"," ")
+                           problem_idx_1L_chr <- stringr::str_locate(updated_1L_chr," ")[1,1] %>%
+                             unname()
+                           if(!is.na(problem_idx_1L_chr))
+                             updated_1L_chr <- updated_1L_chr %>%
+                             stringr::str_sub(end = problem_idx_1L_chr-1)
+                           updated_1L_chr %>% trimws(which = "left")
+                         }) %>% unique() %>% sort())
+      df <- df %>%
+        dplyr::mutate(Version = Package %>%
+                        purrr::map_chr(~utils::packageDescription(.x) %>%
+                                         purrr::pluck("Version")),
+                      Citation = Package %>%
+                        purrr::map_chr(~get_pkg_citation(.x)))
+      saveRDS(df,
+              paste0(dir_1L_chr,
+                     "/packages.RDS"))
+      
+    }
+    if(type_1L_chr == "Plots"){
+      composite_1_plt <- depictSlot(x,
+                                    "a_TTUSynopsis",
+                                    depnt_var_desc_1L_chr = depnt_var_desc_1L_chr,
+                                    timepoint_old_nms_chr = procureSlot(x,
+                                                                        "a_TTUSynopsis@d_YouthvarsProfile@timepoint_vals_chr"),
+                                    timepoint_new_nms_chr = timepoint_new_nms_chr,
+                                    what_1L_chr = "composite_mdl",
+                                    write_1L_lgl = T)
+      composite_2_plt <- depictSlot(x,
+                                    slot_nm_1L_chr = "a_TTUSynopsis",
+                                    what_1L_chr = "composite_utl",
+                                    write_1L_lgl = T)
+      if(!is.na(what_1L_chr)){
+        ggplot2::ggsave(file = paste0(dir_1L_chr,
+                                      "/fig1",
+                                      fl_type_1L_chr),
+                        composite_2_plt)
+        ggplot2::ggsave(file = paste0(dir_1L_chr,
+                                      "/fig2",
+                                      fl_type_1L_chr),
+                        composite_1_plt)
+        
+      }
+      
+    }
+  }
 }
