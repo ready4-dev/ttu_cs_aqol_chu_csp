@@ -403,7 +403,7 @@ A <- renewSlot(A, "d_TTUReports@a_TTUSynopsis",
                  renewSlot("digits_int", c(3L,3L)) %>%
                  renewSlot("outp_formats_chr", c("PDF","PDF")) %>%
                  renewSlot("title_1L_chr", 
-                           ifelse(A@b_SpecificParameters@fake_1L_lgl,"A hypothetical study using fake data",
+                           ifelse(A@b_SpecificParameters@fake_1L_lgl,paste0("A hypothetical study using fake data", "to map psychological distress and functioning measures to adolescent AQoL-6D utility"),
                                   "Mapping psychological distress and functioning measures to adolescent AQoL-6D utility using data from a sample of young people presenting to primary mental health services")) %>%
                  #renewSlot("correspondences_r3", old_nms_chr = c("PHQ9", "GAD7"), new_nms_chr = c("PHQ-9", "GAD-7")) %>%
                  renewSlot("e_Ready4useRepos", 
@@ -418,5 +418,80 @@ A <- renewSlot(A, "d_TTUReports@a_TTUSynopsis",
 We download a program for generating a catalogue of models and use it to summarising the models created under each study analysis (one primary and two secondary). The catalogues are saved locally.
 
 ```{r}
-authorSlot(A, "d_TTUReports", what_1L_chr = "Catalogue", download_tmpl_1L_lgl = T, subtitle_1L_chr: "Catalogue of models")
+author_TTUReports(A@d_TTUReports, what_1L_chr = "Catalogue", download_tmpl_1L_lgl = F#, subtitle_1L_chr = "Catalogue of models"
+                  )
+#authorSlot(A, "d_TTUReports", what_1L_chr = "Catalogue", download_tmpl_1L_lgl = T, subtitle_1L_chr = "Catalogue of models") # Need to update catalogue RMD
+```
+
+### Share model catalogue
+We share the catalogues that we created, uploading a copy to our study online repository. To run this step you will need write permissions to the online repository.
+
+```{r}
+shareSlot(A, "d_TTUReports@a_TTUSynopsis", type_1L_chr = "Report", what_1L_chr = "Catalogue") # May get an error message - can ignore so long as files uploaded.
+```
+
+### Share models
+We share tables of coefficients and other meta-data about the models we have created by posting them to the online repository. The object we create and share is designed to be used in conjunction with the `youthu` package to make it easier to make predictions with these models using new data. Again, you will need write permissions to the online repository.
+
+```{r}
+shareSlot(A, "d_TTUReports@a_TTUSynopsis", type_1L_chr = "Models", what_1L_chr = "ingredients")
+```
+
+## Author manuscript
+We add some content about the manuscript we wish to author.
+
+```{r eval =F}
+A <- renewSlot(A, "d_TTUReports@a_TTUSynopsis",
+               procureSlot(A, "d_TTUReports@a_TTUSynopsis") %>% 
+                 renewSlot("background_1L_chr", 
+                           "Quality Adjusted Life Years (QALYs) are often used in economic evaluations, yet utility weights for deriving them are rarely directly measured in mental health services.") %>%
+                 renewSlot("coi_1L_chr", "None declared") %>%
+                 renewSlot("conclusion_1L_chr", 
+                           ifelse(A@b_SpecificParameters@fake_1L_lgl, 
+                                  "Nothing should be concluded from this study as it is purely hypothetical.",
+                                  "To be written on review of real data")) %>%
+                 renewSlot("ethics_1L_chr", 
+                           paste0("The study was reviewed and granted approval by ", 
+                                  ifelse(A@b_SpecificParameters@fake_1L_lgl,"no-one.",
+                                         "the University of Melbourne’s Human Research Ethics Committee and the local Human Ethics and Advisory Group (ADD NUMBER HERE"))) %>%
+                 renewSlot("funding_1L_chr", 
+                           paste0("The study was funded by ",
+                                  ifelse(A@b_SpecificParameters@fake_1L_lgl,"no-one.",
+                                         "the National Health and Medical Research Council (NHMRC, ADD ID HERE), Orygen and headspace."))) %>%
+                 #renewSlot("interval_chr", "three months") %>%
+                 renewSlot("keywords_chr", 
+                           c("AQoL","functioning", "psychological distress", "QALYs", "utility mapping")) %>%
+                 renewSlot("sample_desc_1L_chr", 
+                           ifelse(A@b_SpecificParameters@fake_1L_lgl, "The study sample is fake data.","")) )
+```
+
+We create a summary of the study that can be interpreted by the program that authors the manuscript.
+
+```{r eval =F}
+A <- renewSlot(A, "d_TTUReports@a_TTUSynopsis@abstract_args_ls",
+               #manufactureSlot(A,"d_TTUReports@a_TTUSynopsis", 
+                manufacture_SpecificSynopsis(A@d_TTUReports@a_TTUSynopsis,
+                                             what_1L_chr = "abstract_args_ls",
+                                             depnt_var_nms_chr = c("AQoL-6D", "Adolescent AQoL Six Dimension"))) 
+```
+
+```{r eval =F}
+A@d_TTUReports@a_TTUSynopsis <- enhance_SpecificSynopsis(A@d_TTUReports@a_TTUSynopsis, # A <- enhanceSlot(A, "d_TTUReports@a_TTUSynopsis", 
+                 with_1L_chr = "results_ls",
+                 depnt_var_nms_chr = c("AQoL-6D", "Adolescent AQoL Six Dimension")) 
+```
+
+We create and save the plots that will be used in the manuscript.
+
+```{r}
+#authorSlot(A, "d_TTUReports",
+author_TTUReports(A@d_TTUReports,           
+           type_1L_chr = "Plots",
+           depnt_var_desc_1L_chr = A@d_TTUReports@a_TTUSynopsis@b_SpecificResults@a_SpecificShareable@shareable_outp_ls$results_ls$study_descs_ls$health_utl_nm_1L_chr)
+```
+
+We download a program for generating a template manuscript and run it to author an algorithm authored first draft of the manuscript.
+
+```{r}
+authorSlot(A, "d_TTUReports", type_1L_chr = "Report", what_1L_chr = "Manuscript_Auto", download_tmpl_1L_lgl = F)#T
 ```
