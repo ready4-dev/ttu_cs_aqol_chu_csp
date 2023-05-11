@@ -7,25 +7,35 @@ make_csnl_example_dict <- function(ds_tb){ # Add days out of role, utility diffe
            metadata_1L_lgl = F) 
   dictionary_r3 <- dictionary_r3 %>% # Modify CALD to cald
     dplyr::filter(var_nm_chr %in% names(ds_tb)) %>%
+    dplyr::filter(var_nm_chr != "CALD") %>%
     renew.ready4use_dictionary(var_nm_chr = setdiff(names(ds_tb),dictionary_r3$var_nm_chr) %>% sort(),
-                               var_ctg_chr = c(rep("clinical symptom",2),
+                               var_ctg_chr = c(rep("clinical symptom",4),
                                                rep("multi-attribute utility instrument question",9),
                                                "health_utility",
-                                               rep("demographic",3),
+                                               rep("demographic",4),
+                                               rep("difference",2),
                                                "psychological distress",
                                                "quality of life",
-                                               rep("spatial",2)),
+                                               rep("spatial",2),
+                                               rep("validation",2)),
                                var_desc_chr = c("days unable to perform usual activities",
-                                                "dys cut back on usual activities",
+                                                "days out of role",
+                                                "days cut back on usual activities",
+                                                "primary diagnosis group",
                                                 paste0("Child Health Utility (9 Dimension) question ",1:9),
                                                 "Child Health Utility (9 Dimension) total score",
                                                 "in employment",
                                                 "employment type",
                                                 "in education",
+                                                "education and employment",
+                                                "Difference between AQoL-6D and CHU-9D total scores",
+                                                "Difference between AQoL-6D total scores and validation values",
                                                 "Kessler Psychological Distress Scale (10 Item)",
                                                 "My Life Tracker", 
                                                 "area index of relative social disadvantage",
-                                                "area remoteness"
+                                                "area remoteness",
+                                                "validation unweighted aqol total",
+                                                "validation weighted aqol total"
                                ),
                                var_type_chr = setdiff(names(ds_tb),dictionary_r3$var_nm_chr) %>% 
                                  sort() %>% purrr::map_chr(~{
@@ -35,7 +45,8 @@ make_csnl_example_dict <- function(ds_tb){ # Add days out of role, utility diffe
                                                  "integer",
                                                  "double"),
                                           classes_chr[1])
-                                 })) %>% dplyr::arrange(var_ctg_chr, var_nm_chr)
+                                 })) %>% 
+    dplyr::arrange(var_ctg_chr, var_nm_chr)
   dictionary_r3
 }
 make_csnl_example_predrs <- function(){
@@ -46,14 +57,14 @@ make_csnl_example_predrs <- function(){
            metadata_1L_lgl = F)
   predictors_r3 <- renew.specific_predictors(predictors_r3,
                                              filter_cdn_1L_chr = "short_name_chr == 'SOFAS'") %>%
-    renew.specific_predictors(short_name_chr = c("K10", "MLT"),
-                              long_name_chr = c("K10 total score", "MLT total score"),
-                              min_val_dbl = c(10,0),
-                              max_val_dbl = c(50,100),
-                              class_chr = c("integer","numeric"),
+    renew.specific_predictors(short_name_chr = c("K10", "MLT", "CHU9D", "AQOL6D"),
+                              long_name_chr = c("K10 total score", "MLT total score", "CHU9D health utility", "AQOL6D health utility"),
+                              min_val_dbl = c(10,0,0,0.03),
+                              max_val_dbl = c(50,100,1,1),
+                              class_chr = c("integer","numeric","numeric","numeric"),
                               increment_dbl = 1,
-                              class_fn_chr = c("as.integer","as.double"), # update when new youthvars classes are created
-                              mdl_scaling_dbl = 0.01,
+                              class_fn_chr = c("as.integer","as.double","as.double","as.double"), # update when new youthvars classes are created
+                              mdl_scaling_dbl = c(0.01,0.01,1,1),
                               covariate_lgl = F) %>%
     dplyr::mutate(covariate_lgl = dplyr::case_when(short_name_chr == "SOFAS" ~ F,
                                                    T ~ covariate_lgl))
@@ -429,13 +440,55 @@ make_var_by_round_plt <- function(data_tb,
 transform_csnl_example_ds <- function(ds_df){
   ds_tb <- ds_df %>% 
     tibble::as_tibble() %>%
+    dplyr::mutate(c_p_diag_grouped = dplyr::case_when(as.character(DiagnosisPrimary) %in% c("Acute stress disorder",
+                                                                                            "Adjustment disorder",
+                                                                                            "Agoraphobia",
+                                                                                            "Anxiety symptoms",
+                                                                                            "Bipolar disorder",
+                                                                                            "Cyclothymic disorder",
+                                                                                            "Depressive disorder NOS",
+                                                                                            "Depressive symptoms",
+                                                                                            "Dysthymia",
+                                                                                            "Generalised anxiety disorder",
+                                                                                            "Major depressive disorder",
+                                                                                            "Mixed anxiety and depressive symptoms",
+                                                                                            "Obsessive-compulsive disorder",
+                                                                                            "Other affective disorder",
+                                                                                            "Other anxiety disorder",
+                                                                                            "Panic disorder",
+                                                                                            "Post-traumatic stress disorder",
+                                                                                            "Separation anxiety disorder",
+                                                                                            "Social phobia",
+                                                                                            "Stress related") ~ "Anxiety and Depression",
+                                                      as.character(DiagnosisPrimary) %in% c("Attention deficit hyperactivity disorder (ADHD)",
+                                                                                            "Conduct disorder",
+                                                                                            "Feeding and Eating Disorders",
+                                                                                            "Gender Dysphoria",
+                                                                                            "Neurocognitive Disorders",
+                                                                                            "Neurodevelopmental Disorders",
+                                                                                            "Oppositional defiant disorder",
+                                                                                            "Other",
+                                                                                            "Personality Disorders",
+                                                                                            "Pervasive developmental disorder",
+                                                                                            "Schizoaffective disorder",
+                                                                                            "Schizophrenia",
+                                                                                            "Sleep-Wake Disorders",
+                                                                                            "Somatic Symptom and Related Disorders" ) ~ "Other Mental Disorder",
+                                                      as.character(DiagnosisPrimary) %in% c("Alcohol dependence",
+                                                                                            "Other drug dependence") ~ "Substance Use",
+                                                      as.character(DiagnosisPrimary) %in% c("Not applicable (e.g. for non-Mental Health related services, or service provider not qualified to give diagnosis)",
+                                                                                            "Diagnosis not yet assessed or requires further assessment",
+                                                                                            "No diagnosis (and no sub-syndromal mental health problems)") ~ "Not applicable",
+                                                      is.na(DiagnosisPrimary) ~ NA_character_,
+                                                      T ~ "Uncategorised") %>%
+                    as.factor()) %>%
     dplyr::rename(c_days_cut_back = K12_DaysCutDown,
                   c_days_unable = K11_DaysTotallyUnable,
                   CHU9D = chu9_total_w,
                   c_p_diag_s = DiagnosisPrimary,
                   d_age = Age,
                   d_ATSI = ATSI,
-                  #d_CALD = CALD, # Uncomment when dictionary is updated
+                  d_CALD = CALD, # Uncomment when dictionary is updated
                   d_employed = Working,
                   d_employment_type = EmploymentType,
                   d_gender = Gender,
@@ -443,9 +496,9 @@ transform_csnl_example_ds <- function(ds_df){
                   K10 = K10_total,
                   MLT = MLT_mean, 
                   s_IRSD = IRSD,
-                  s_remoteness = Remoteness) %>%
-    dplyr::select(-c("aqol6d_total_c",
-                     "aqol6d_total_w"))
+                  s_remoteness = Remoteness,
+                  validation_aqol_c = aqol6d_total_c,
+                  validation_aqol_w = aqol6d_total_w) 
   ds_tb <- ds_tb %>%
     dplyr::mutate(dplyr::across(c(dplyr::starts_with("aqol6d_q"),
                                   dplyr::starts_with("chu9_q"),
@@ -455,6 +508,17 @@ transform_csnl_example_ds <- function(ds_df){
                                   s_IRSD,
                                   SOFAS,
     ), ~as.integer(.x)))
+  ds_tb <- ds_tb %>%
+    dplyr::mutate(c_days_oor = c_days_cut_back + c_days_unable) %>%
+    dplyr::mutate(d_studying_working = dplyr::case_when(purrr::map2_lgl(as.character(d_employed), as.character(d_studying), ~ is.na(.x) | is.na(.y)) ~ NA_character_,
+                                                        purrr::map2_lgl(as.character(d_employed), as.character(d_studying), ~ .x == "No" && .y == "No") ~ "Not studying or working",
+                                                        purrr::map2_lgl(as.character(d_employed), as.character(d_studying), ~ .x == "No" && .y == "Yes") ~ "Studying only",
+                                                        purrr::map2_lgl(as.character(d_employed), as.character(d_studying), ~ .x == "Yes" && .y == "No") ~ "Working only",
+                                                        purrr::map2_lgl(as.character(d_employed), as.character(d_studying), ~ .x == "Yes" && .y == "Yes") ~ "Studying and working",
+                                                        T ~ "Uncategorised"
+                                                        )) %>%
+    dplyr::mutate(difference_mauis = validation_aqol_w - CHU9D) %>%
+    dplyr::mutate(difference_aqol_calcs = NA_real_)
   ds_tb <- youthvars::add_uids_to_tbs_ls(list(ds_tb),"Participant_") %>% purrr::pluck(1)
   return(ds_tb)
 }
