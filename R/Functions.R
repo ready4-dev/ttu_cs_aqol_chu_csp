@@ -984,7 +984,7 @@ make_abstract_args_ls <- function(results_ls, # Generalise from TTU
                                                                paste0(length(mdl_cmprsns_ls$OLS) %>%
                                                                         xfun::numbers_to_words() %>%
                                                                         Hmisc::capitalize()),
-                                                               " Ordinary Least Squares (OLS) and ",
+                                                               " ordinary least squares (OLS) and ",
                                                                length(mdl_cmprsns_ls$GLM) %>%
                                                                  xfun::numbers_to_words(),
                                                                " generalised linear models (GLMs) were explored to identify the best algorithm. ",
@@ -1403,6 +1403,7 @@ make_results_ls <- function(spine_of_results_ls = NULL, # CORE OF S4 Classes - r
                      ttu_version_1L_chr = spine_of_results_ls$outp_smry_ls$session_ls$otherPkgs$TTU$Version,
                      var_nm_change_lup = spine_of_results_ls$var_nm_change_lup,
                      version_1L_chr = version_1L_chr)
+  results_ls <- transform_tbls_for_covar_nms(results_ls) %>% transform_tbls_for_csnl_mdls()
   return(results_ls)
 }
 make_smry_of_brm_mdl <- function (mdl_ls,
@@ -2441,7 +2442,42 @@ investigate_SpecificPredictors <- function(x){
                                    dissemination_1L_chr = x@dissemination_1L_chr)
   return(x_SpecificFixed)
 }
-
+transform_tbls_for_csnl_mdls <- function(results_ls){
+  if(is.na(results_ls$cohort_ls$n_fup_1L_dbl)){
+    results_ls$tables_ls <- results_ls$tables_ls %>% 
+      purrr::map(~{
+        column_nm_1L_chr <- names(.x)[1]
+        .x %>%
+          dplyr::mutate(!!rlang::sym(column_nm_1L_chr) := !!rlang::sym(column_nm_1L_chr) %>%
+                          purrr::map_chr(~ifelse(endsWith(.x, " baseline"), stringi::stri_replace_last_fixed(.x, " baseline","") ,.x)))
+      })
+  }
+  return(results_ls)
+}
+transform_tbls_for_covar_nms <- function(results_ls){
+  results_ls$tables_ls <- results_ls$tables_ls %>% 
+    purrr::map(~{
+      column_nm_1L_chr <- names(.x)[1]
+      predr_vars_nms_chr <- get_predrs_by_ctg(results_ls,collapse_1L_lgl = T) %>% purrr::flatten_chr()
+      .x %>%
+        dplyr::mutate(!!rlang::sym(column_nm_1L_chr) := !!rlang::sym(column_nm_1L_chr) %>%
+                        purrr::map_chr(~
+                                         {
+                                           var_nm_1L_chr <- .x
+                                           purrr::reduce(c(" baseline"," change"),
+                                                         .init = var_nm_1L_chr,
+                                                         ~ ifelse(endsWith(.x, .y) &&  !(stringi::stri_replace_last_fixed(.x, .y,"") %in% predr_vars_nms_chr),
+                                                                  ready4::get_from_lup_obj(results_ls$mdl_ingredients_ls$dictionary_tb,
+                                                                                   match_value_xx = stringi::stri_replace_last_fixed(.x, .y,""),
+                                                                                   match_var_nm_1L_chr = "var_nm_chr",
+                                                                                   target_var_nm_1L_chr = "var_desc_chr") %>%
+                                                                    Hmisc::capitalize(),
+                                                                  .x))
+                                         }
+                        ))
+    })
+  return(results_ls)
+}
 write_predr_and_covars_cmprsn <- function(scored_data_tb,
                                           bl_tb,
                                           ds_smry_ls,

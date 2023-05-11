@@ -495,3 +495,14 @@ We download a program for generating a template manuscript and run it to author 
 ```{r}
 authorSlot(A, "d_TTUReports", type_1L_chr = "Report", what_1L_chr = "Manuscript_Auto", download_tmpl_1L_lgl = F)#T
 ```
+
+```{r echo=FALSE}
+#author_TTUReports(A@d_TTUReports, type_1L_chr = "Dependencies", what_1L_chr = "Manuscript_Auto")
+```
+
+# Tidy workspace
+The preceding steps saved multiple objects (mostly R model objects) that have embedded within them copies of the source dataset. We can now purge all such copies from our output data directory.
+
+```{r}
+#author(procureSlot(A,"c_SpecificProject"), type_1L_chr = "purge_write") 
+```
