@@ -28,7 +28,7 @@ When using this code it is important to note:
 
 1) Some of the steps in this program involve interactivity - they generate a prompt that a user must respond to before proceeding. Therefore, this code should be run step by step (i.e run one chunk at a time and do not knit if you are using the kdown version of this code).
 
-2) The code is implemented in R using [ready4 framework](https://ready4-dev.github.io/ready4/) modules for
+2) The code is implemented in R using [ready4](https://ready4-dev.github.io/ready4/) modules for
 
 - labeling, validating and summarising youth mental health datasets from the [youthvars](https://ready4-dev.github.io/youthvars/) package;
 - scoring health utility from the [scorz](https://ready4-dev.github.io/scorz/) package;
@@ -66,11 +66,12 @@ source("../R/Functions.R")
 # Ingest, transform, label and score data
 
 ## Specify data locations
-To start, we need to specify the local and remote locations for storing project input and output data. The real study dataset (for study implementation and reproduction) can be read from a local location and fake data (for algorithm testing and demonstration) can be read from either local or remote (ie online repository) locations. Analyses outputs will be shared via online repositories. Different repositories will be used for outputs created with real or fake data and to map to AQOL-6D or CHU-9D health utility.
+To start, we need to specify the local and remote locations for storing project input and output data. The real study dataset (for study implementation and reproduction) can be read from a local location and fake data that closely resembles the study dataset (which are useful for algorithm testing and demonstration) can be read from either local or remote (i.e. online repository) locations. Note, if using real data, the local output directory **must be a secure location** as copies of the input dataset will be saved in this directory. Non-confidential analyses outputs will be shared via online repositories. Different repositories will be used for outputs created with real or fake data and which map to AQOL-6D or CHU-9D health utility.
 
 ```{r eval=FALSE}
 is_real_1L_lgl <- F # 
-path_to_data_1L_chr <- NA_character_ # Replace with path to data if you have access to it
+path_to_data_1L_chr <- "****Replace with path to local data****"
+path_to_output_1L_chr <- normalizePath("../Data")
 repositories_ls <- purrr::map2(c(rep("TTU",2),rep("fakes",3)),
                                 c("https://doi.org/10.7910/DVN/FDRUXH",
                                   "https://doi.org/10.7910/DVN/N4NEHL",
@@ -84,30 +85,23 @@ repositories_ls <- purrr::map2(c(rep("TTU",2),rep("fakes",3)),
 ```
 
 ## Ingest data
-Based on the path value specified above, we can now ingest either the real study dataset or the synthetic (fake) data. The default setting above (empty) will allow you to run the program for an illustrative **replication** study using a synthetic dataset that, though entirely fake, closely resembles the study dataset. However, if you have access to the source dataset and wish to use it to **reproduce** our study, you can instead specify the path to that data here and record that you are using real data. We perform a number of data transformations (using the `transform_csnl_example_ds` function) to prepare the dataset for analysis and then pair the dataset with its data dictionary as a `Ready4useDyad`.
+Based on the path value specified above, we can now ingest either the real study dataset or the synthetic (fake) data. We perform a number of data transformations (using the `transform_csnl_example_ds` function) to prepare the dataset for analysis and then pair the dataset with its data dictionary, label the dataset and provide details of the unique identifier variable using the `YouthvarsProfile` module.
 
 ```{r}
-A <- Ready4useDyad(ds_tb = {if(!is.na(path_to_data_1L_chr)){readRDS(path_to_data_1L_chr)
-  }else{repositories_ls$records_fake_r4 %>%
-      ingest(fls_to_ingest_chr = c("SPECIFY_FILE_NAME_WHEN_WRITTEN"), # Synthetic dataset is not currently publicly available
-             metadata_1L_lgl = F)}} %>% transform_csnl_example_ds(),
+A <- YouthvarsProfile(a_Ready4useDyad = Ready4useDyad(ds_tb = {
+  if(!is.na(path_to_data_1L_chr)){readRDS(path_to_data_1L_chr)
+    }else{repositories_ls$records_fake_r4 %>%
+        ingest(fls_to_ingest_chr = c("SPECIFY_FILE_NAME_WHEN_WRITTEN"), # Synthetic dataset is not currently publicly available
+               metadata_1L_lgl = F)}} %>% transform_csnl_example_ds(),
   dictionary_r3 = repositories_ls$aqol_real_r4 %>%
     ingest(fls_to_ingest_chr = c("ymh_clinical_aqol_chu_dict_r3"),
-           metadata_1L_lgl = F)
-  ) 
-A <- A %>%
-  renew_Ready4useDyad(type_1L_chr = "label") # MODIFY WHEN READY4USE LIBRARY IS UPDATED
-```
-
-We add some metadata about the structural properties of our dataset (variables for the unique record identifier and data collection round), using the `YouthvarsProfile` module.
-
-```{r}
-A <- YouthvarsProfile(a_Ready4useDyad = A,
-                      id_var_nm_1L_chr = "fkClientID")
+           metadata_1L_lgl = F)) %>%
+  renew_Ready4useDyad(type_1L_chr = "label"),
+                   id_var_nm_1L_chr = "fkClientID") # MODIFY WHEN READY4USE LIBRARY IS UPDATED
 ```
 
 ## Create utility mapping projects
-We supply the dataset along with its metadata to two `TTUProject` modules - one to be used for mapping to adolescent AQoL-6D health utility and the other to map to CHU-9D health utility. Details about the former instrument can be automatically retrieved through use of `ScorzAqol6Adol` module. We can manually record information about the CHU-9D instrument using the more generic `ScorzProfile` module.
+We supply the dataset along with its metadata to two `TTUProject` modules - one to be used for mapping to adolescent AQoL-6D health utility and the other to map to CHU-9D health utility. Details about the former instrument can be automatically retrieved through use of `ScorzAqol6Adol` module. We can manually record information about the CHU-9D instrument using the more generic `ScorzProfile` module. At the conclusion of this step we delete the object `A` we previously created as it is no longer required.
 
 ```{r}
 projects_ls <- list(AQOL_r4 = TTUProject(a_ScorzProfile = ScorzAqol6Adol(a_YouthvarsProfile = A,
@@ -120,14 +114,13 @@ projects_ls <- list(AQOL_r4 = TTUProject(a_ScorzProfile = ScorzAqol6Adol(a_Youth
                                                                      instrument_dict_r3 =  renew(A@a_Ready4useDyad@dictionary_r3,
                                                                                                  filter_cdn_1L_chr = "startsWith(var_nm_chr,'chu9_')|var_nm_chr=='CHU9D'") ,
                                                                      instrument_nm_1L_chr = "Child Health Utility (9 Dimension)",
-                                                                     #instrument_version_1L_chr = XX,
                                                                      instrument_short_nm_1L_chr = "CHU-9D",
                                                                      itm_labels_chr = c("worry", "sadness", "pain", "tiredness", "annoyance", "school", 
                                                                                         "sleep", "daily routine", "activities"),
                                                                      itm_prefix_1L_chr = "chu9_",
-                                                                     total_wtd_var_nm_1L_chr = "CHU9D"#, total_unwtd_var_nm_1L_chr = "chu9d_total_c"
+                                                                     total_wtd_var_nm_1L_chr = "CHU9D"
                                                                      )))
-rm(A) # Delete A - no longer needed
+rm(A) 
 ```
 
 ## Verify health utility scores
@@ -138,19 +131,26 @@ First we apply the `ScorzAqol6Adol` scoring algorithm.
 ```{r}
 #projects_ls$AQOL_r4<- renewSlot(projects_ls$AQOL_r4, "a_ScorzProfile") # Will replace subsequent line
 projects_ls$AQOL_r4@a_ScorzProfile <- renew_ScorzAqol6Adol(projects_ls$AQOL_r4@a_ScorzProfile) # This is temporary
+projects_ls$CHU_r4 <- renewSlot(projects_ls$CHU_r4,
+                                "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb",
+                                new_val_xx = procureSlot(projects_ls$AQOL_r4, 
+                                                         "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb"))
 ```
 
-Next we compare the newly generated scores to those in our source dataset.
+Next we calculate the difference between the newly generated AQoL scores to those in our source dataset.
 
 ```{r}
-projects_ls$AQOL_r4 <- renewSlot(projects_ls$AQOL_r4,
-                                 "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb",
-                                 new_val_xx = procureSlot(projects_ls$AQOL_r4, "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb") %>%
-                                   dplyr::mutate(difference_aqol_calcs = AQOL6D - validation_aqol_w))
+projects_ls <- projects_ls %>%
+  purrr::map(~renewSlot(.x,
+                        "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb",
+                        new_val_xx = procureSlot(.x, 
+                                                 "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb") %>%
+                          dplyr::mutate(difference_aqol_calcs = AQOL6D - validation_aqol_w))) %>% 
+  stats::setNames(names(projects_ls))
 ```
 
 ```{r}
-# To manuall inspect the validation statistic, uncomment and run the following two lines
+# To manually inspect the validation statistic, uncomment and run the following two lines
 # projects_ls$AQOL_r4@a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb %>% dplyr::select(AQOL6D, validation_aqol_w, difference_aqol_calcs)
 # projects_ls$AQOL_r4@a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb$difference_aqol_calcs %>% summary()
 ```
@@ -168,83 +168,79 @@ projects_ls <- projects_ls %>%
                  metamorphose() %>%
                  procureSlot("b_SpecificParameters"))) %>% 
   stats::setNames(names(projects_ls))
-# A <- renewSlot(A, "b_SpecificParameters", 
-#                SpecificConverter(a_ScorzProfile = A@a_ScorzProfile) %>%
-#                  metamorphose() %>%
-#                  procureSlot("b_SpecificParameters"))
 ```
 
-We add a table describing the candidate predictors that we will explore.
+We ingest from one or our online repositories a table describing the candidate predictors that we will explore.
 
 ```{r}
-predictors_r3 <- Ready4useRepos(dv_nm_1L_chr = "TTU",
-                    dv_ds_nm_1L_chr = "https://doi.org/10.7910/DVN/FDRUXH",
-                    dv_server_1L_chr = "dataverse.harvard.edu") %>%
+predictors_r3 <- repositories_ls$aqol_real_r4 %>% # Make DS Specific
   ingest(fls_to_ingest_chr = c("predictors_r3"), metadata_1L_lgl = F)
-projects_ls <- projects_ls %>% {
-
-
-}
+projects_ls <- projects_ls %>% 
+  purrr::map2(c("AQOL6D", "CHU9D"),
+              ~ renewSlot(.x, 
+                         "b_SpecificParameters@predictors_lup",
+                         predictors_r3 %>% dplyr::filter(short_name_chr != .y))) %>% 
+  stats::setNames(names(projects_ls))
 rm(predictors_r3)
-# A <- renewSlot(A, "b_SpecificParameters@predictors_lup", Ready4useRepos(dv_nm_1L_chr = "TTU", 
-#                                                                         dv_ds_nm_1L_chr = "https://doi.org/10.7910/DVN/FDRUXH", 
-#                                                                         dv_server_1L_chr = "dataverse.harvard.edu") %>%
-#                  ingest(fls_to_ingest_chr = c("predictors_r3"),
-#                         metadata_1L_lgl = F)) 
-A@b_SpecificParameters@predictors_lup <- make_csnl_example_predrs() # Temporary - Prior code preferred once scaling factor fixed.
 ```
 
-We add the required parameters (allowable range for utility scores, the variable names of candidate predictors to be explored in the primary analysis, candidate covariates, variables to use when preparing descriptive statistics, the data collection date-stamp variable and metadata on candidate predictors).
+We now add the required parameters for allowable range for utility scores, the variable names of candidate predictors to be explored in the primary analysis, candidate covariates, and the variables to use when preparing descriptive statistics.
 
 ```{r}
-A <- renewSlot(A, "b_SpecificParameters@depnt_var_min_max_dbl", c(0.03,1)) %>% # Should be linked to ScorzClass
-  renewSlot("b_SpecificParameters@candidate_predrs_chr", c("K10", "MLT", "SOFAS")) %>%
-  renewSlot("b_SpecificParameters@candidate_covars_chr", c("d_gender", "d_age",  #"d_sexual_ori_s", 
-                                                           "d_ATSI","CALD",
-                                                           "c_days_cut_back",   "c_days_unable", 
-                                                           #"d_studying_working", 
-                                                           "c_p_diag_s" #"c_clinical_staging_s",
-                                                          # "SOFAS"
-                                                           )) %>%
-  renewSlot("b_SpecificParameters@descv_var_nms_chr", c("d_age","d_gender",
-                                                        "c_days_cut_back",   "c_days_unable", 
-                                                        "d_employment_type","d_studying",#"d_studying_working", 
-                                                        "c_p_diag_s", #"c_clinical_staging_s",
-                                                        "s_IRSD","s_remoteness"
-                                                        #"SOFAS"
-                                                        )) 
-# %>%  renewSlot("b_SpecificParameters@msrmnt_date_var_nm_1L_chr", "d_interview_date") 
+projects_ls <- projects_ls %>% 
+  purrr::map2(c(0.03,-0.1059),
+              ~ renewSlot(.x, "b_SpecificParameters@depnt_var_min_max_dbl", c(.y,1)) %>% # Should be linked to ScorzClass
+                renewSlot("b_SpecificParameters@candidate_predrs_chr", c("K10",
+                                                                         #"MLT", 
+                                                                         "SOFAS")) %>%
+                renewSlot("b_SpecificParameters@candidate_covars_chr", c("d_age",  "d_gender",  
+                                                                         "d_ATSI","d_CALD",
+                                                                         "d_studying_working",
+                                                                         "c_p_diag_grouped", #"c_clinical_staging_s",
+                                                                         "c_days_oor", 
+                                                                         "s_IRSD","s_remoteness"
+                                                                         )) %>%
+                renewSlot("b_SpecificParameters@descv_var_nms_chr", c("d_age","d_gender",
+                                                                      "d_ATSI","d_CALD",
+                                                                      "d_employment_type","d_studying", "d_studying_working",
+                                                                      "c_days_cut_back", "c_days_unable", "c_days_oor",
+                                                                      "c_p_diag_grouped", #"c_clinical_staging_s",
+                                                                      "s_IRSD","s_remoteness"))) %>% 
+  stats::setNames(names(projects_ls))
 ```
 
 ## Create local workspace
-We add details of the directory where data generated by our analysis will be written. Note, if using real data **this must be a secure location** as copies of the dataset will be saved in this directory.
+We create sub-directories where data generated by our analysis will be written. 
 
 ```{r}
-A <-  renewSlot(A, "b_SpecificParameters@fake_1L_lgl", T#!is_real_1L_lgl
-                ) 
-```
-```{r}
-A <- renewSlot(A, "c_SpecificProject", SpecificModels(a_YouthvarsProfile = A@a_ScorzProfile@a_YouthvarsProfile,
-                                                      b_SpecificParameters = A@b_SpecificParameters,
-                                                      paths_chr = {
-                                                        if(is.na(path_to_data_1L_chr)){
-                                                          tempdir()
-                                                          }else{
-                                                           normalizePath("../Data")
-                                                          }
-                                                        })) 
+projects_ls <- projects_ls %>% 
+  purrr::map2(c("AQOL","CHU"),
+              ~ {
+                ready4::write_new_dirs(paste0(path_to_output_1L_chr,"/",.y),
+                                       consent_1L_chr = "Y")
+                 renewSlot(.x, "b_SpecificParameters@fake_1L_lgl", !is_real_1L_lgl) %>%
+                   renewSlot("c_SpecificProject", 
+                             SpecificModels(a_YouthvarsProfile = .x@a_ScorzProfile@a_YouthvarsProfile,
+                                            b_SpecificParameters = .x@b_SpecificParameters,
+                                            paths_chr = paste0(path_to_output_1L_chr,"/",.y)))
+              }) %>% stats::setNames(names(projects_ls))
 ```
 
-We confirm that our parameters and dataset are internally consistent. This step will also rename dataset variables that use certain incompatible naming conventions.
+We next confirm that our parameters and dataset are internally consistent. This step will also rename dataset variables that use certain incompatible naming conventions.
 
 ```{r}
-A@c_SpecificProject <- ratify_SpecificModels(A@c_SpecificProject) # Delete when Specific library is updated
-#A <- ratifySlot(A, "c_SpecificProject")
+projects_ls <- projects_ls %>% 
+  purrr::map(~ renewSlot(.x,
+                          "c_SpecificProject",
+                          ratify_SpecificModels(.x@c_SpecificProject))) %>%  # Replace when Specific library is updated - ratifySlot(.x, "c_SpecificProject")
+  stats::setNames(names(projects_ls))
+
 ```
 
-We now begin to create sub-directories of the nominated output data directory.
+We now create additional sub-directories of the nominated output data directory.
 
 ```{r}
+# PICK UP HERE
 A <- renewSlot(A, "c_SpecificProject", 
                authorSlot(A, "c_SpecificProject", what_1L_chr = "workspace"))
 ```

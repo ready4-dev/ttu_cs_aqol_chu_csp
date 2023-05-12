@@ -59,11 +59,11 @@ make_csnl_example_predrs <- function(){
                                              filter_cdn_1L_chr = "short_name_chr == 'SOFAS'") %>%
     renew.specific_predictors(short_name_chr = c("K10", "MLT", "CHU9D", "AQOL6D"),
                               long_name_chr = c("K10 total score", "MLT total score", "CHU9D health utility", "AQOL6D health utility"),
-                              min_val_dbl = c(10,0,0,0.03),
+                              min_val_dbl = c(10,0,-0.1059,0.03),
                               max_val_dbl = c(50,100,1,1),
                               class_chr = c("integer","numeric","numeric","numeric"),
                               increment_dbl = 1,
-                              class_fn_chr = c("as.integer","as.double","as.double","as.double"), # update when new youthvars classes are created
+                              class_fn_chr = c("as.integer","as.double","as.double","youthvars::youthvars_aqol6d_adol"), # update when new youthvars classes are created
                               mdl_scaling_dbl = c(0.01,0.01,1,1),
                               covariate_lgl = F) %>%
     dplyr::mutate(covariate_lgl = dplyr::case_when(short_name_chr == "SOFAS" ~ F,
