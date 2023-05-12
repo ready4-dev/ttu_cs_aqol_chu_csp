@@ -65,12 +65,22 @@ source("../R/Functions.R")
 
 # Ingest, transform, label and score data
 
-## Specify data source
+## Specify data sources
 To start, we need to specify the path to our input dataset. 
 
 ```{r eval=FALSE}
 path_to_data_1L_chr <- NA_character_ # Replace with path to data if you have access to it
 is_real_1L_lgl <- F # 
+repositories_ls <- purrr::map2(c(rep("TTU",2),rep("fakes",3)),
+                                c("https://doi.org/10.7910/DVN/FDRUXH",
+                                  "",
+                                  "https://doi.org/10.7910/DVN/LYBMB0",
+                                  "",
+                                  "https://doi.org/10.7910/DVN/HJXYKQ"),
+                                ~ Ready4useRepos(dv_nm_1L_chr = .x,
+                                 dv_ds_nm_1L_chr = .y,
+                                 dv_server_1L_chr = "dataverse.harvard.edu")) %>%
+  stats::setNames(c("aqol_real_r4", "chu_real_r4","aqol_fake_r4", "chu_fake_r4","records_fake_r4"))
 ```
 
 ## Ingest data
@@ -78,14 +88,10 @@ Based on the path value specified above, we can now ingest either the real study
 
 ```{r}
 A <- Ready4useDyad(ds_tb = {if(!is.na(path_to_data_1L_chr)){readRDS(path_to_data_1L_chr)
-  }else{Ready4useRepos(dv_nm_1L_chr = "fakes",
-                       dv_ds_nm_1L_chr = "https://doi.org/10.7910/DVN/HJXYKQ",
-                       dv_server_1L_chr = "dataverse.harvard.edu") %>%
-      ingest(fls_to_ingest_chr = c("SPECIFY_FILE_NAME_WHEN_WRITTEN"),
+  }else{repositories_ls$records_fake_r4 %>%
+      ingest(fls_to_ingest_chr = c("SPECIFY_FILE_NAME_WHEN_WRITTEN"), # Synthetic dataset is not currently publicly available
              metadata_1L_lgl = F)}} %>% transform_csnl_example_ds(),
-  dictionary_r3 = Ready4useRepos(dv_nm_1L_chr = "TTU",
-                                 dv_ds_nm_1L_chr = "https://doi.org/10.7910/DVN/FDRUXH",
-                                 dv_server_1L_chr = "dataverse.harvard.edu") %>%
+  dictionary_r3 = repositories_ls$aqol_real_r4 %>%
     ingest(fls_to_ingest_chr = c("ymh_clinical_aqol_chu_dict_r3"),
            metadata_1L_lgl = F)
   ) 
@@ -100,14 +106,53 @@ A <- YouthvarsProfile(a_Ready4useDyad = A,
                       id_var_nm_1L_chr = "fkClientID")
 ```
 
-
-## Score health utility
-We calculate adolescent AQoL-6D scores using the `ScorzAqol6Adol` module and save the dataset along with its metadata as a `TTUProject` module.
+## Create utility mapping projects
+We supply the dataset along with its metadata to two `TTUProject` modules - one to be used for mapping to adolescent AQoL-6D health utility and the other to map to CHU-9D health utility. Details about the former instrument can be automatically retrieved through use of `ScorzAqol6Adol` module. We can manually record information about the CHU-9D instrument using the more generic `ScorzProfile` module.
 
 ```{r}
-A <- TTUProject(a_ScorzProfile = ScorzAqol6Adol(a_YouthvarsProfile = A))
-#A <- renewSlot(A, "a_ScorzProfile") # Will replace subsequent line
-A@a_ScorzProfile <- renew_ScorzAqol6Adol(A@a_ScorzProfile) # This is temporary
+projects_ls <- list(AQOL_r4 = TTUProject(a_ScorzProfile = ScorzAqol6Adol(a_YouthvarsProfile = A,
+                                                                         total_wtd_var_nm_1L_chr = "AQOL6D")),
+                    CHU_r4 = TTUProject(a_ScorzProfile = ScorzProfile(a_YouthvarsProfile = A,
+                                                                     country_1L_chr = "Australia",
+                                                                     domain_wtd_var_nms_chr = renew(A@a_Ready4useDyad@dictionary_r3,
+                                                                                                    filter_cdn_1L_chr = "startsWith(var_nm_chr,'chu9_')") %>%
+                                                                       dplyr::pull(var_nm_chr) %>% as.character(),
+                                                                     instrument_dict_r3 =  renew(A@a_Ready4useDyad@dictionary_r3,
+                                                                                                 filter_cdn_1L_chr = "startsWith(var_nm_chr,'chu9_')|var_nm_chr=='CHU9D'") ,
+                                                                     instrument_nm_1L_chr = "Child Health Utility (9 Dimension)",
+                                                                     #instrument_version_1L_chr = XX,
+                                                                     instrument_short_nm_1L_chr = "CHU-9D",
+                                                                     itm_labels_chr = c("worry", "sadness", "pain", "tiredness", "annoyance", "school", 
+                                                                                        "sleep", "daily routine", "activities"),
+                                                                     itm_prefix_1L_chr = "chu9_",
+                                                                     total_wtd_var_nm_1L_chr = "CHU9D"#, total_unwtd_var_nm_1L_chr = "chu9d_total_c"
+                                                                     )))
+rm(A)
+```
+
+## Verify health utility scores
+Our source dataset includes total weighted utility scores for both utility instruments. We can verify the calculations for one of these instruments, the adolescent AQoL-6D, by comparing the calculations in our dataset to those generated from item responses using the `ScorzAqol6Adol`.
+
+First we apply the `ScorzAqol6Adol` scoring algorithm.
+
+```{r}
+#projects_ls$AQOL_r4<- renewSlot(projects_ls$AQOL_r4, "a_ScorzProfile") # Will replace subsequent line
+projects_ls$AQOL_r4@a_ScorzProfile <- renew_ScorzAqol6Adol(projects_ls$AQOL_r4@a_ScorzProfile) # This is temporary
+```
+
+Next we compare the newly generated scores to those in our source dataset.
+
+```{r}
+projects_ls$AQOL_r4 <- renewSlot(projects_ls$AQOL_r4,
+                                 "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb",
+                                 new_val_xx = procureSlot(projects_ls$AQOL_r4, "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb") %>%
+                                   dplyr::mutate(difference_aqol_calcs = AQOL6D - validation_aqol_w))
+```
+
+```{r}
+# To manuall inspect the validation statistic, uncomment and run the following two lines
+# projects_ls$AQOL_r4@a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb %>% dplyr::select(AQOL6D, validation_aqol_w, difference_aqol_calcs)
+# projects_ls$AQOL_r4@a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb$difference_aqol_calcs %>% summary()
 ```
 
 # Describe and analyse data
@@ -117,14 +162,30 @@ A@a_ScorzProfile <- renew_ScorzAqol6Adol(A@a_ScorzProfile) # This is temporary
 We begin by reorganising some of the metadata we have already specified about our dataset.
 
 ```{r}
-A <- renewSlot(A, "b_SpecificParameters", SpecificConverter(a_ScorzProfile = A@a_ScorzProfile) %>%
+projects_ls <- projects_ls %>% 
+  purrr::map(~renewSlot(.x, "b_SpecificParameters", 
+               SpecificConverter(a_ScorzProfile = .x@a_ScorzProfile) %>%
                  metamorphose() %>%
-                 procureSlot("b_SpecificParameters"))
+                 procureSlot("b_SpecificParameters"))) %>% 
+  stats::setNames(names(projects_ls))
+# A <- renewSlot(A, "b_SpecificParameters", 
+#                SpecificConverter(a_ScorzProfile = A@a_ScorzProfile) %>%
+#                  metamorphose() %>%
+#                  procureSlot("b_SpecificParameters"))
 ```
 
 We add a table describing the candidate predictors that we will explore.
 
 ```{r}
+predictors_r3 <- Ready4useRepos(dv_nm_1L_chr = "TTU",
+                    dv_ds_nm_1L_chr = "https://doi.org/10.7910/DVN/FDRUXH",
+                    dv_server_1L_chr = "dataverse.harvard.edu") %>%
+  ingest(fls_to_ingest_chr = c("predictors_r3"), metadata_1L_lgl = F)
+projects_ls <- projects_ls %>% {
+
+
+}
+rm(predictors_r3)
 # A <- renewSlot(A, "b_SpecificParameters@predictors_lup", Ready4useRepos(dv_nm_1L_chr = "TTU", 
 #                                                                         dv_ds_nm_1L_chr = "https://doi.org/10.7910/DVN/FDRUXH", 
 #                                                                         dv_server_1L_chr = "dataverse.harvard.edu") %>%
