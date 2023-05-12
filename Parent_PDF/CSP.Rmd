@@ -65,21 +65,21 @@ source("../R/Functions.R")
 
 # Ingest, transform, label and score data
 
-## Specify data sources
-To start, we need to specify the path to our input dataset. 
+## Specify data locations
+To start, we need to specify the local and remote locations for storing project input and output data. The real study dataset (for study implementation and reproduction) can be read from a local location and fake data (for algorithm testing and demonstration) can be read from either local or remote (ie online repository) locations. Analyses outputs will be shared via online repositories. Different repositories will be used for outputs created with real or fake data and to map to AQOL-6D or CHU-9D health utility.
 
 ```{r eval=FALSE}
-path_to_data_1L_chr <- NA_character_ # Replace with path to data if you have access to it
 is_real_1L_lgl <- F # 
+path_to_data_1L_chr <- NA_character_ # Replace with path to data if you have access to it
 repositories_ls <- purrr::map2(c(rep("TTU",2),rep("fakes",3)),
                                 c("https://doi.org/10.7910/DVN/FDRUXH",
-                                  "",
+                                  "https://doi.org/10.7910/DVN/N4NEHL",
                                   "https://doi.org/10.7910/DVN/LYBMB0",
-                                  "",
+                                  "https://doi.org/10.7910/DVN/3R5TS3",
                                   "https://doi.org/10.7910/DVN/HJXYKQ"),
                                 ~ Ready4useRepos(dv_nm_1L_chr = .x,
-                                 dv_ds_nm_1L_chr = .y,
-                                 dv_server_1L_chr = "dataverse.harvard.edu")) %>%
+                                                 dv_ds_nm_1L_chr = .y,
+                                                 dv_server_1L_chr = "dataverse.harvard.edu")) %>%
   stats::setNames(c("aqol_real_r4", "chu_real_r4","aqol_fake_r4", "chu_fake_r4","records_fake_r4"))
 ```
 
@@ -127,7 +127,7 @@ projects_ls <- list(AQOL_r4 = TTUProject(a_ScorzProfile = ScorzAqol6Adol(a_Youth
                                                                      itm_prefix_1L_chr = "chu9_",
                                                                      total_wtd_var_nm_1L_chr = "CHU9D"#, total_unwtd_var_nm_1L_chr = "chu9d_total_c"
                                                                      )))
-rm(A)
+rm(A) # Delete A - no longer needed
 ```
 
 ## Verify health utility scores
