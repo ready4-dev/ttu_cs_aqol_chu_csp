@@ -1,0 +1,6 @@
+---
+title: "MS_Available_Data_And_Resources"
+output: html_document
+---
+
+`r make_data_availability_text(results_ls)` 

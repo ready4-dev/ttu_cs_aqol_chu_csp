@@ -337,6 +337,7 @@ make_sub_tot_plts <- function(data_tb,
                               legend_sclg_1L_dbl = 1,
                               make_log_log_tfmn_1L_lgl = F,
                               round_var_nm_1L_chr = "round",
+                              x_labels_chr = character(0),
                               y_label_1L_chr = "Percentage"){
   if(!is.null(col_nms_chr)){
     plots_ls<-list()
@@ -346,10 +347,15 @@ make_sub_tot_plts <- function(data_tb,
         data_tb <- dplyr::mutate(data_tb, !!targetvar := log(-log(1-!!as.name(i))))  %>%
           dplyr::mutate(!!targetvar :=ifelse(!!as.name(i)==1,log(-log(1-0.999)),!!as.name(targetvar)))
       }
-      labelx <- eval(parse(text=paste0("attributes(data_tb$",i,")$label")))
-      labelx <- stringr::str_sub(labelx,
-                                 start = stringi::stri_locate_last_fixed(labelx," - ")[1,1] %>%
-                                   unname() + 2)
+      if(identical(x_labels_chr,character(0))){
+        labelx <- eval(parse(text=paste0("attributes(data_tb$",i,")$label")))
+        labelx <- stringr::str_sub(labelx,
+                                   start = stringi::stri_locate_last_fixed(labelx," - ")[1,1] %>%
+                                     unname() + 2)
+      }else{
+        labelx <- x_labels_chr[which(col_nms_chr==i)]
+      }
+
       if(make_log_log_tfmn_1L_lgl){
         labelx<- paste0("log-log transformed ", labelx)
       }
@@ -382,9 +388,9 @@ make_sub_tot_plts <- function(data_tb,
                                                heights = heights_int)
     }else{
       legend_ls <- NULL
-      heights_int <- heights_int[-length(heights_int)]
+      heights_int <- min(heights_int[-length(heights_int)],length(plots_ls))
       composite_plt <- gridExtra::grid.arrange(ggpubr::ggarrange(plotlist=plots_ls,
-                                                                 nrow = plot_rows_cols_pair_int[1],
+                                                                 nrow = max(plot_rows_cols_pair_int[1], ceiling(length(plots_ls)/plot_rows_cols_pair_int[2])),
                                                                  ncol = plot_rows_cols_pair_int[2]),
                                                nrow = length(heights_int),
                                                heights = heights_int)
@@ -585,7 +591,8 @@ write_descv_plots <- function(data_tb,
                               combined_plot_params_ls = list(nrow_1L_int = 2L,
                                                              rel_heights_dbl = c(4,10),
                                                              scale_dbl = c(0.9,0.9),
-                                                             base_height_dbl = 10)
+                                                             base_height_dbl = 10),
+                              x_labels_chr = character(0)
 ){
   if(is.null(maui_domains_pfxs_1L_chr)){
     maui_domains_col_nms_chr <- NULL
@@ -609,7 +616,8 @@ write_descv_plots <- function(data_tb,
                                                                 col_nms_chr = maui_domains_col_nms_chr,
                                                                 plot_rows_cols_pair_int = dim_plots_params_ls$plot_rows_cols_pair_int,
                                                                 round_var_nm_1L_chr = ds_descvs_ls$round_var_nm_1L_chr,
-                                                                heights_int = dim_plots_params_ls$heights_int),
+                                                                heights_int = dim_plots_params_ls$heights_int,
+                                                                x_labels_chr = x_labels_chr),
                                               width_1L_dbl = dim_plots_params_ls$width_1L_dbl,
                                               height_1L_dbl = sum(dim_plots_params_ls$heights_int),
                                               path_to_write_to_1L_chr = descv_outp_dir_1L_chr,
@@ -620,7 +628,8 @@ write_descv_plots <- function(data_tb,
                                                               plot_rows_cols_pair_int = dim_plots_params_ls$plot_rows_cols_pair_int,
                                                               round_var_nm_1L_chr = ds_descvs_ls$round_var_nm_1L_chr,
                                                               heights_int = dim_plots_params_ls$heights_int,
-                                                              make_log_log_tfmn_1L_lgl = T),
+                                                              make_log_log_tfmn_1L_lgl = T,
+                                                              x_labels_chr = x_labels_chr),
                                             width_1L_dbl = dim_plots_params_ls$width_1L_dbl,
                                             height_1L_dbl = sum(dim_plots_params_ls$heights_int),
                                             path_to_write_to_1L_chr = descv_outp_dir_1L_chr,
@@ -742,7 +751,9 @@ author_SpecificModels <- function(x,
                                   prefd_mdl_types_chr = NULL,
                                   what_1L_chr = "all",
                                   digits_1L_int = 3L,
-                                  reference_1L_int = NULL){
+                                  reference_1L_int = NULL,
+                                  x_labels_chr = character(0)){
+  series_1L_lgl <- x@a_YouthvarsProfile %>% inherits("YouthvarsSeries")
   if(what_1L_chr %in% c("all","descriptives","models","workspace")){
     session_data_ls <- sessionInfo()
     if(what_1L_chr %in% c("workspace","all")){
@@ -777,10 +788,11 @@ author_SpecificModels <- function(x,
                                                   nbr_of_digits_1L_int = digits_1L_int,
                                                   participation_var_1L_chr = if(!series_1L_lgl){character(0)}else{x@a_YouthvarsProfile@participation_var_1L_chr})
       descv_plts_paths_ls <- write_descv_plots(x@a_YouthvarsProfile@a_Ready4useDyad@ds_tb, #add youthvars:: when Exporting
-                                                          ds_descvs_ls = ds_descvs_ls,
-                                                          descv_outp_dir_1L_chr = x@b_SpecificParameters@paths_ls$descv_outp_dir_1L_chr,
-                                                          lbl_nms_chr = x@b_SpecificParameters@itm_labels_chr, # Should be domain labels
-                                                          maui_domains_pfxs_1L_chr = hutils::longest_prefix(x@b_SpecificParameters@domain_labels_chr))
+                                               ds_descvs_ls = ds_descvs_ls,
+                                               descv_outp_dir_1L_chr = x@b_SpecificParameters@paths_ls$descv_outp_dir_1L_chr,
+                                               lbl_nms_chr = x@b_SpecificParameters@itm_labels_chr, # Should be domain labels
+                                               x_labels_chr = x_labels_chr,
+                                               maui_domains_pfxs_1L_chr = hutils::longest_prefix(x@b_SpecificParameters@domain_labels_chr))
       
     }
     if(what_1L_chr %in% c("models","all")){
@@ -2306,10 +2318,67 @@ renew_ScorzAqol6Adol <- function(x, # DO NOT EXPORT TO SCORZ LIBRARY
                                      new_cases_r3 = x@instrument_dict_r3)
   }
   if(label_ds_1L_lgl)
-    y <- renew_Ready4useDyad(y)
+    y <- renew_Ready4useDyad(y) # change to renew
   if(type_1L_chr == "score"){
     x@a_YouthvarsProfile@a_Ready4useDyad <- y
   }
+  return(x)
+}
+renew_ScorzProfile <- function(x,
+                               drop_msng_1L_lgl = F,
+                               item_type_1L_chr = "numeric",
+                               scoring_fn = identity,
+                               scorz_args_ls = NULL,
+                               label_ds_1L_lgl = T,
+                               type_1L_chr = "score"){
+
+  if(type_1L_chr %in% c("score","score-c","score-w")){
+    if(type_1L_chr == "score"){
+     x <-  renew_ScorzProfile(x,# Change to renew
+                             scoring_fn = scoring_fn,
+                             scorz_args_ls = scorz_args_ls,
+                             label_ds_1L_lgl = label_ds_1L_lgl,
+                             type_1L_chr = "score-w") %>% 
+       renew_ScorzProfile(label_ds_1L_lgl = label_ds_1L_lgl,# Change to renew
+                          type_1L_chr = "score-c") 
+    }
+    if(type_1L_chr %in% c("score-c","score-w")){
+    y <- x@a_YouthvarsProfile@a_Ready4useDyad
+    y <- renew(y, type_1L_chr = "unlabel")
+    }
+    if(type_1L_chr == "score-c"){
+      y@ds_tb <- y@ds_tb %>%
+        dplyr::mutate(`:=`(!!rlang::sym(x@total_unwtd_var_nm_1L_chr),
+                           rowSums(dplyr::select(.,dplyr::starts_with(x@itm_prefix_1L_chr)))))
+      if(drop_msng_1L_lgl)
+        y@ds_tb <- y@ds_tb  %>%
+        dplyr::filter(!is.na(!!rlang::sym(x@total_unwtd_var_nm_1L_chr)))
+      if(!x@total_unwtd_var_nm_1L_chr %in% x@instrument_dict_r3$var_nm_chr){
+        x@instrument_dict_r3 <- ready4use::renew.ready4use_dictionary(x@instrument_dict_r3,
+                                                           var_nm_chr = x@total_unwtd_var_nm_1L_chr,
+                                                           var_ctg_chr = "multi-attribute utility instrument unweighted total score",
+                                                           var_desc_chr = paste0(x@instrument_nm_1L_chr, " (unweighted total)"),
+                                                           var_type_chr = item_type_1L_chr)
+      }
+    }
+    if(type_1L_chr == "score-w"){
+      y@ds_tb <- rlang::exec(scoring_fn, y@ds_tb, !!!scorz_args_ls)
+      if(!x@total_wtd_var_nm_1L_chr %in% x@instrument_dict_r3$var_nm_chr){
+        x@instrument_dict_r3 <- ready4use::renew.ready4use_dictionary(x@instrument_dict_r3,
+                                                           var_nm_chr = x@total_wtd_var_nm_1L_chr,
+                                                           var_ctg_chr = "health utility",
+                                                           var_desc_chr = paste0(x@instrument_nm_1L_chr, " total score"),
+                                                           var_type_chr = item_type_1L_chr)
+      }
+    }
+  }
+  if(type_1L_chr %in% c("score-c","score-w")){
+    y@dictionary_r3 <- ready4use::renew.ready4use_dictionary(y@dictionary_r3,
+                                                             new_cases_r3 = x@instrument_dict_r3)
+    if(label_ds_1L_lgl)
+      y <- renew_Ready4useDyad(y) # change to renew
+    x@a_YouthvarsProfile@a_Ready4useDyad <- y
+    }
   return(x)
 }
 investigate_SpecificMixed <- function(x,

@@ -1,0 +1,24 @@
+\\textbf{Background: }
+Quality Adjusted Life Years (QALYs) are often used in economic evaluations, yet utility weights for deriving them are rarely directly measured in mental health services.
+\\newline
+\\newline
+\\textbf{Objectives: }
+We aimed to identify the best regression models to predict Adolescent AQoL Six Dimension (AQoL-6D) utility and evaluate the predictive ability of three candidate measures of psychological distress, quality of life and functioning.
+\\newline
+\\newline
+\\textbf{Methods: }
+The study sample is fake data.Five Ordinary Least Squares (OLS) and three generalised linear models (GLMs) were explored to identify the best algorithm.  Predictive ability of three candidate measures of psychological distress, quality of life and functioning were assessed using ten fold cross validation and forest models. Linear / generalised linear mixed effect models were then used to construct longitudinal predictive models for AQoL-6D change.
+\\newline
+\\newline
+\\textbf{Results: }
+K10 had the highest predictive ability in ten fold cross validation and the random forest model. GLM with Gaussian distribution and log link and OLS with complementary log log transformation were the best peforming models. The mean ratio between the within-person and between-person associated coefficients was NA for K10, NA for MLT and NA for SOFAS.
+\\newline
+\\newline
+\\textbf{Conclusions: }
+Nothing should be concluded from this study as it is purely hypothetical.
+\\newline
+\\newline
+\\textbf{Data: }
+Detailed results in the form of catalogues of the models produced by this study and other supporting information are available in the online repository: https://doi.org/10.7910/DVN/LYBMB0
+\\newline
+\\newline

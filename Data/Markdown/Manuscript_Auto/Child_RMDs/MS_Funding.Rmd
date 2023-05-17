@@ -1,0 +1,8 @@
+---
+title: "MS_Funding"
+author: "Matthew Hamilton"
+date: "13/10/2020"
+output: html_document
+---
+
+`r make_funding_text(results_ls)`

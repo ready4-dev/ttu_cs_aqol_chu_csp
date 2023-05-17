@@ -1,0 +1,35 @@
+---
+output: 
+  bookdown::pdf_book: 
+    includes:
+      in_header: preamble.tex
+    pandoc_args: 
+      - "--metadata-file=../Header/header_common.yaml"
+      - '--lua-filter=../Filters/scholarly-metadata.lua'
+      - '--lua-filter=../Filters/author-info-blocks.lua'
+    keep_tex: true
+params:
+  existing_predrs_ls: !r NULL
+  output_type_1L_chr: PDF
+  subtitle_1L_chr: "Catalogue of models"
+  root_dir_1L_chr: ./
+  section_type_1L_chr: "#"
+  X: NULL
+subtitle: "`r params$subtitle_1L_chr`"
+date: "`r format.Date(Sys.Date(),'%B %d, %Y')`"
+graphics: yes
+---
+
+```{r setup, include=FALSE}
+library(specific)
+library(xtable)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(comment = NA)
+knitr::opts_knit$set(root.dir = params$root_dir_1L_chr)
+options(tinytex.verbose = TRUE)
+options(xtable.floating = FALSE)
+options(xtable.timestamp = "")
+```
+
+```{r, child=c('../Child_RMDs/_make_ctlg.Rmd')}
+```

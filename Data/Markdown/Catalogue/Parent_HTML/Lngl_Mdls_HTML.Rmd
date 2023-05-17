@@ -1,0 +1,29 @@
+---
+output: 
+  bookdown::html_document2:
+    pandoc_args: 
+      - "--metadata-file=../Header/header_common.yaml"
+      - '--lua-filter=../Filters/scholarly-metadata.lua'
+      - '--lua-filter=../Filters/author-info-blocks.lua'
+    toc: yes
+params:
+  existing_predrs_ls: !r NULL
+  output_type_1L_chr: HTML
+  subtitle_1L_chr: "Catalogue of longitudinal models"
+  root_dir_1L_chr: ./
+  section_type_1L_chr: "#"
+  X: NULL
+subtitle: "`r params$subtitle_1L_chr`"
+date: "`r format.Date(Sys.Date(),'%B %d, %Y')`"
+graphics: yes
+---
+
+```{r setup, include=FALSE}
+library(specific)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(comment = NA)
+knitr::opts_knit$set(root.dir = params$root_dir_1L_chr)
+```
+
+```{r, child=c('../Child_RMDs/_make_ctlg.Rmd')}
+```

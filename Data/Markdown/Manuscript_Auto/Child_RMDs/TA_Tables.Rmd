@@ -1,0 +1,26 @@
+---
+title: "MA_Results"
+author: "Matthew Hamilton"
+date: "13/10/2020"
+output: html_document
+---
+
+```{r tenfoldolstb, tab.cap=make_ten_folds_tbl_title(results_ls), tab.id = 'tenfoldolstb', echo = F, results = 'asis'}
+print_ten_folds_tbl(params_ls,
+                    caption_1L_chr = knitr::opts_current$get("tab.cap"),
+                    mkdn_tbl_ref_1L_chr = paste0("tab:",knitr::opts_current$get("tab.id")))
+```
+\newpage
+```{r tenfoldglmtb, tab.cap=make_ten_folds_tbl_title(results_ls, ref_1L_int=2), tab.id = 'tenfoldglmtb', echo = F, results = 'asis'}
+print_ten_folds_tbl(params_ls,
+                    caption_1L_chr = knitr::opts_current$get("tab.cap"),
+                    mkdn_tbl_ref_1L_chr = paste0("tab:",knitr::opts_current$get("tab.id")),
+                    ref_1L_int = 2)
+```
+```{r, eval = length(results_ls$ttu_lngl_ls$incld_covars_chr)>0, echo=FALSE, results='asis'}
+purrr::map(1:length(results_ls$ttu_lngl_ls$best_mdls_tb$model_type),
+           ~ list(coefscovarstype = paste0("coefscovarstype",.x),
+                         ref_1L_int = .x)) %>%
+knit_from_tmpl(path_to_tmpl_1L_chr = "../Child_RMDs/TA_Tables_Covars_Coefs.Rmd")
+```
+

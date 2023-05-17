@@ -1,0 +1,10 @@
+---
+title: "MS_Intro_Long"
+author: "Matthew Hamilton"
+date: "13/10/2020"
+output: html_document
+---
+
+This article is a scientific summary of a study that the authors implemented that has been automatically generated from study results by version `r paste0(X@a_Ready4showPaths@outp_data_dir_1L_chr,"/",X@a_Ready4showPaths@mkdn_data_dir_1L_chr,"/", what_1L_chr,"/CITATION.cff") %>% readLines() %>% purrr::map_chr(~ifelse(startsWith(.x,"version:"),stringr::str_sub(.x, start = 10),NA_character_)) %>% purrr::discard(is.na)` of the manuscript authoring program ttu_lng_ss [@TTUExtension]. 
+
+`r get_background_text(results_ls)`

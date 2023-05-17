@@ -1,0 +1,14 @@
+---
+title: "Cohort Characteristics"
+author: "Matthew Hamilton"
+date: "26/01/2021"
+output: html_document
+---
+
+## Cohort characteristics
+<!-- Table start -->Participants characteristics `r ifelse(is.na(results_ls$cohort_ls$n_fup_1L_dbl),"","at baseline and follow-up ")`are displayed in `r ifelse(params_ls$output_type_1L_chr=="Word","","Table")` \@ref(tab:participantstb).<!-- Table end --> This study included `r make_nbr_included_text(results_ls)`. 
+
+```{r, child = child_docs_ls$Cohort_Profile, echo=FALSE}
+```
+
+`r ifelse(is.na(results_ls$cohort_ls$n_fup_1L_dbl),"",make_nbr_at_fup_text(results_ls))`

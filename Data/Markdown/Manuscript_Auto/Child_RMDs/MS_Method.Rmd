@@ -1,0 +1,54 @@
+---
+title: "MS_Method"
+author: "Matthew Hamilton"
+date: "13/10/2020"
+output:
+  bookdown::pdf_document2: default
+  html_document: default
+  pdf_document: default
+---
+## Sample and setting
+`r results_ls$study_descs_ls$sample_desc_1L_chr`
+
+## Measures
+Data was collected on utility weights, `r get_nbr_of_predrs(results_ls)` candidate predictors of utility weights and descriptive population characteristics. 
+
+### Utility weights
+Utility weights were assessed using the `r get_hlth_utl_nm(results_ls)` multi-attribute utility instrument.
+
+### Candidate predictor`r ifelse(get_nbr_of_predrs(results_ls, as_words_1L_lgl = F)>1,"s","")`
+`r make_cndt_predr_text(results_ls)` 
+
+`r get_predrs_by_ctg(results_ls, long_desc_1L_lgl = T) %>% paste0(collapse=" ")`
+
+### Population characteristics
+Population characteristic data were `r get_popl_descvs(results_ls) %>% sort()`.
+
+## Statistical analysis
+We implemented the generalised form of the study analysis algorithm developed by Hamilton, Gao and colleagues [@HamiltonGao2021], the key steps of which are summarised as follows.
+
+### Descriptive statistics
+Basic descriptive statistics were used to characterise the cohort in terms of baseline population variables. Pearson’s Product Moment Correlations (*r*) were used to determine the relationships between candidate predictors and the `r get_hlth_utl_nm(results_ls)` utility score.
+
+### Model evaluation 
+We compared predictive performance of a range of models predicting `r get_hlth_utl_nm(results_ls)` utility scores using the candidate predictor that had the highest Pearson correlation coefficient with utility scores. The models compared include `r get_mdl_cmprsns(results_ls, describe_1L_lgl = F)`. `r get_mdl_cmprsns(results_ls)`. Ten-fold cross-validation was used to compare model fitting with training datasets and predictive ability with testing datasets using three indicators including R^2^, root mean square error (RMSE) and mean absolute error (MAE)  [@RN20; @RN19].
+
+To evaluate whether candidate predictors could independently predict utility scores, we established multivariate prediction models using baseline data with the candidate predictor and `r get_covar_ctgs(results_ls)` covariates. `r get_covars_by_ctg(results_ls, collapse_1L_lgl = T) %>% paste0(collapse = " ")`
+
+`r ifelse(get_nbr_of_predrs(results_ls, as_words_1L_lgl = F)>1,"### Candidate predictor comparison","")`
+`r make_cndt_predr_text(results_ls, type = "comparison")` 
+
+### Utility mapping models
+We next established models using `r get_mdl_cmprsns(results_ls, describe_1L_lgl = F, mixed_1L_lgl = T)` `r ifelse(is.na(results_ls$cohort_ls$n_fup_1L_dbl),""," that included both the baseline and follow-up data")`. Model fitting was evaluated using Bayesian R^2^ [@RN21].
+```{r echo=FALSE}
+if(!is.na(results_ls$cohort_ls$n_fup_1L_dbl)){
+  assessing_change_1L_chr <- c("../Child_RMDs/MS_Method_change.Rmd")
+}else{
+  assessing_change_1L_chr <- NULL
+}
+```
+```{r child=assessing_change_1L_chr, echo=FALSE, warning=FALSE}
+```
+
+### Software
+We undertook all our analyses using  `r X@b_SpecificResults@a_SpecificShareable@shareable_outp_ls$session_ls$R.version$version.string %>% stringr::str_sub(end=-14)` [@RCitation] using the TTU package [@TTUPackage] (version `r X@b_SpecificResults@a_SpecificShareable@shareable_outp_ls$session_ls$otherPkgs$TTU$Version`). 

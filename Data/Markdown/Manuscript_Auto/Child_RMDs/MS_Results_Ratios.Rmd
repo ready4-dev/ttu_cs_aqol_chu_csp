@@ -1,0 +1,9 @@
+---
+title: "MS_Results_Ratios"
+author: "Matthew Hamilton & Caroline Gao"
+date: "26/07/2021"
+output: html_document
+---
+
+## Within-person to between-person coefficient ratios
+The mean ratio between the within-person and between-person associated coefficients (${\beta}_{change}/{\beta}_{baseline}$) is `r make_within_between_ratios_text(results_ls)`. 

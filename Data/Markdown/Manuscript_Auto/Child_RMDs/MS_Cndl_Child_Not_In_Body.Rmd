@@ -1,0 +1,15 @@
+---
+title: "MS_Cndl_Child_Not_In_Body"
+output: html_document
+---
+
+\newpage
+`r if(!is.null(child_docs_1L_chr)){"## Tables and figures {-}"}`
+
+```{r, child = '../Child_RMDs/MS_Tables_Cohort_Profile.RMD', echo=FALSE}
+```
+\newpage
+```{r, child = '../Child_RMDs/MS_Tables_Predrs_Cors.RMD', echo=FALSE}
+```
+```{r, child = '../Child_RMDs/MS_Tables_Long_TTU_Coefs.RMD', echo=FALSE}
+```

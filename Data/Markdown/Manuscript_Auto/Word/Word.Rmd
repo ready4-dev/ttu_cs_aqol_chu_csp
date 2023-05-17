@@ -1,0 +1,49 @@
+---
+bibliography: ../Data/bib.bib
+output:
+  bookdown::markdown_document2:
+    base_format: "officedown::rdocx_document"
+    number_sections: no
+    tables:
+      style: Table
+      layout: autofit
+      width: 1.0
+      caption:
+        style: Table Caption
+        pre: 'Table '
+        sep: ': '
+      conditional:
+        first_row: true
+        first_column: false
+        last_row: false
+        last_column: false
+        no_hband: false
+        no_vband: true
+    pandoc_args: 
+      - "--metadata-file=../Header/header_common.yaml"
+      - '--lua-filter=../Filters/scholarly-metadata.lua'
+      - '--lua-filter=../Filters/author-info-blocks.lua'
+      - '--lua-filter=../Filters/pagebreaks.lua'
+params:
+  figures_in_body_lgl: !r F
+  output_type_1L_chr: Word
+  results_ls: !r NULL
+  tables_in_body_lgl: !r F
+graphics: yes
+csl: plos.csl
+---
+
+```{r child="../Child_RMDs/MS_Funding.Rmd", echo=FALSE, warning=FALSE}
+```
+
+\newpage
+
+```{r results='asis', warning=F, echo = F}
+abstract_chr <- paste0(stringr::str_replace_all(stringr::str_replace_all(stringr::str_replace_all(stringr::str_replace_all(readLines('../Header/abstract.txt'),'\\\\\\\\textbf',''),'\\{','**'),'\\}','**'),'\\\\\\\\newline','\\\n')) 
+writeLines(c("**Abstract**",'\\\n',abstract_chr))
+```
+
+\newpage
+
+```{r child="../Child_RMDs/All_Content.Rmd", echo=FALSE, warning=FALSE}
+```

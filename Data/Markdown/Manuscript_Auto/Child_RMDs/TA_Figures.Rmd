@@ -1,0 +1,9 @@
+---
+title: "MA_Results"
+author: "Matthew Hamilton"
+date: "13/10/2020"
+output: html_document
+---
+```{r importance, fig.cap="Variable importance estimated using random forest",echo=F, out.width = "400px"}
+knitr::include_graphics(results_ls$paths_to_figs_ls$importance)
+```

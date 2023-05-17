@@ -1,0 +1,18 @@
+---
+title: "Untitled"
+author: "Matthew Hamilton"
+date: "27/01/2021"
+output: html_document
+---
+\blandscape
+<!---BLOCK_LANDSCAPE_START--->
+
+```{r cfscl, tab.cap='Estimated coefficients from utility mapping models', tab.id = 'cfscl', results="asis"}
+print_indpnt_predrs_coefs_tbl(params_ls,
+                              caption_1L_chr = knitr::opts_current$get("tab.cap"),
+                              mkdn_tbl_ref_1L_chr = paste0("tab:",knitr::opts_current$get("tab.id")))
+
+```
+
+\elandscape
+<!---BLOCK_LANDSCAPE_STOP--->

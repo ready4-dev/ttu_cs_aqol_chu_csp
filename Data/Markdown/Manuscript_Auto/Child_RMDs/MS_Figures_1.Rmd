@@ -1,0 +1,10 @@
+---
+title: "MS_Figures_1"
+author: "Matthew Hamilton"
+date: "28/01/2021"
+output: html_document
+---
+
+```{r fig1, fig.cap=paste0("Distribution of ",results_ls$study_descs_ls$health_utl_nm_1L_chr," domains"),echo=F, out.width = "400px"}
+knitr::include_graphics(results_ls$paths_to_figs_ls$combined_utl)
+```

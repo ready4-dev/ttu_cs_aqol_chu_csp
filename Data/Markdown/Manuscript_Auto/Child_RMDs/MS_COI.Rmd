@@ -1,0 +1,6 @@
+---
+title: "COI"
+output: html_document
+---
+
+`r make_coi_text(results_ls)`

@@ -1,0 +1,12 @@
+---
+title: "MS_Figures_2"
+author: "Matthew Hamilton"
+date: "28/01/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r fig2, fig.cap=make_dnst_and_sctr_plt_title(results_ls),echo=F, out.width = "400px"}
+knitr::include_graphics(results_ls$paths_to_figs_ls$composite)
+```

@@ -1,0 +1,17 @@
+---
+title: "Untitled"
+author: "Matthew Hamilton"
+date: "27/01/2021"
+output: html_document
+---
+
+```{r echo = F}
+if(length(results_ls$ttu_lngl_ls$best_mdls_tb$model_type) > 2){
+  ttu_coefs_child_chr <- "../Child_RMDs/MS_Tables_Long_TTU_Coefs_Seprt.Rmd"
+}else{
+  ttu_coefs_child_chr <- "../Child_RMDs/MS_Tables_Long_TTU_Coefs_Joined.Rmd"
+}
+
+```
+```{r child=ttu_coefs_child_chr, echo=FALSE}
+```

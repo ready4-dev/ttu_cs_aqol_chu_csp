@@ -1,0 +1,42 @@
+---
+title: "Predr_Cors"
+author: "Matthew Hamilton"
+date: "28/01/2021"
+output: html_document
+---
+```{r predrscors, tab.cap=paste0("Candidate predictor",ifelse(get_nbr_of_predrs(results_ls, as_words_1L_lgl = F)>1,"s",""), " distribution parameters and correlations with ",get_hlth_utl_nm(results_ls)," utility"), tab.id = 'predrscors', results="asis"}
+# tb <- results_ls$tables_ls$pred_dist_and_cors 
+# tb <- tb %>%
+#     dplyr::mutate(label = label %>% purrr::map_chr(~stringr::str_remove_all(.x," \\(Weighted total\\)")))
+# if(params_ls$output_type_1L_chr == "PDF"){
+#   names(tb) <- c("","",
+#                "(N =",paste0(results_ls$cohort_ls$n_inc_1L_dbl,")"),
+#                "(N =",paste0(results_ls$cohort_ls$n_fup_1L_dbl,")"),
+#                "\\textit{p}")
+# tb %>%
+#      kableExtra::kbl(booktabs = T,
+#                      caption = knitr::opts_current$get("tab.cap"),
+#                      escape = F) %>%
+#   kableExtra::kable_styling() %>%
+#     kableExtra::column_spec(3:6, width = "3em") %>%
+#   kableExtra::column_spec(1, bold = T, width = "14em") %>%
+#   kableExtra::add_header_above(c(" ", " ", "Baseline" = 2, "Follow-Up" = 2, " ")) %>%
+#     kableExtra::collapse_rows(columns = 1)
+# }else{
+#   tb <- tb %>% 
+# transform_tb_for_merged_col_1(output_type_1L_chr = params_ls$output_type_1L_chr)
+# # add_to_row_ls <- make_bl_fup_add_to_row_ls(tfmd_tb,
+# #                                            n_at_bl_1L_int = results_ls$cohort_ls$n_inc_1L_dbl,
+# #                                            n_at_fup_1L_int = results_ls$cohort_ls$n_fup_1L_dbl)
+#  tb %>%
+#  ready4show::print_table(output_type_1L_chr = params_ls$output_type_1L_chr,
+#                          caption_1L_chr = knitr::opts_current$get("tab.cap"),
+#                          mkdn_tbl_ref_1L_chr = paste0("tab:",knitr::opts_current$get("tab.id")),
+#                          use_rdocx_1L_lgl = ifelse(params_ls$output_type_1L_chr=="Word",T,F),
+#                          add_to_row_ls = add_to_row_ls,
+#                          sanitize_fn = force)
+# }
+print_cors_tbl(params_ls,
+                caption_1L_chr = knitr::opts_current$get("tab.cap"),
+                mkdn_tbl_ref_1L_chr = paste0("tab:", knitr::opts_current$get("tab.id")))
+```

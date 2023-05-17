@@ -1,0 +1,6 @@
+---
+title: "MS_Aims"
+output: html_document
+---
+
+The objective of the study was to identify the best utility mapping models to predict `r get_hlth_utl_nm(results_ls, short_nm_1L_lgl = F)` (`r get_hlth_utl_nm(results_ls)`) utility and evaluate the predictive ability of `r get_nbr_of_predrs(results_ls)` candidate measure`r ifelse(get_nbr_of_predrs(results_ls, as_words_1L_lgl = F)>1,"s","")` of `r get_predr_ctgs(results_ls)`.

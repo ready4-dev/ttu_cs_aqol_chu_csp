@@ -1,0 +1,22 @@
+---
+title: "Longitudinal TTU"
+author: "Matthew Hamilton"
+date: "26/01/2021"
+output: html_document
+---
+
+## Utility mapping models
+
+<!-- Table start -->Regression coefficients of the baseline score and score changes (from baseline to follow-up) estimated in individual `r get_lngl_ttu_types(results_ls)` models are summarised in `r make_indpnt_predrs_lngl_tbls_ref(params_ls)`.<!-- Table end --> Bayesian R^2^ and modelled residual standard deviations (SDs) from each model are reported. `r  make_lngl_ttu_r2_text(results_ls, part_int = 1:2)`
+
+```{r, child = child_docs_ls$Long_TTU_Coefs, echo=FALSE}
+```
+
+<!-- Figure start -->Distribution of observed and predicted utility scores and their association from `r get_selected_mixed_mdls(results_ls)` using `r get_prefd_mdl_predrs(results_ls)` are plotted in Figure \@ref(fig:fig2)<!-- Figure end -->. <!-- Author judgment start -->
+
+`r make_lngl_ttu_with_covars_text(results_ls)`<!-- Table start --><!-- Comment - need to make the following tables conditional on covariates being evaluated -->`r make_covar_ttu_tbl_refs(params_ls)`<!-- Table end --> 
+
+Detailed summaries of all models`r ifelse(get_nbr_of_scndry_analyses(results_ls, as_words_1L_lgl = F) >0, paste0(", including all results from the secondary analys",ifelse(get_nbr_of_scndry_analyses(results_ls, as_words_1L_lgl = F) >1,"es, ","is, ")),"")` are available in the online data repository (see "Availability of data and materials").
+
+```{r, child = child_figs_ls$fig2, echo=FALSE}
+```

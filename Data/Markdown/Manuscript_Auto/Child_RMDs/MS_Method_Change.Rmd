@@ -1,0 +1,13 @@
+---
+title: "MS_Method_Change"
+author: "Matthew Hamilton"
+date: "10/05/2023"
+output:
+  bookdown::pdf_document2: default
+  html_document: default
+  pdf_document: default
+---
+
+### Assessing ability of baseline measures to predict change
+We assessed the potential of our evaluated predictor`r ifelse(get_nbr_of_predrs(results_ls, as_words_1L_lgl = F)>1,"s","")` to predict change in `r get_hlth_utl_nm(results_ls)` when using only baseline measures. This goal can be accomplished by comparing longitudinal TTU model coefficients of each predictor's ${\beta}_{baseline}$ (representing between person variation) and ${\beta}_{change}$ (representing within person variation) parameters [@HamiltonGao2021]. We calculated the ${\beta}_{change}/{\beta}_{baseline}$ ratio for each evaluated single predictor longitudinal TTU model, reporting the mean ratio across all models for `r ifelse(get_nbr_of_predrs(results_ls, as_words_1L_lgl = F)>1,"each","the")` predictor.
+

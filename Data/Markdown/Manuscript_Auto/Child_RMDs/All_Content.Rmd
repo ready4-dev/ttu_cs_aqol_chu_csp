@@ -1,0 +1,53 @@
+---
+title: "All_Content"
+output: html_document
+---
+
+```{r echo = F}
+X <- params$X
+```
+
+```{r echo = F}
+params_ls<- list(figures_in_body_lgl = X@figures_in_body_lgl,
+                 output_type_1L_chr = X@outp_formats_chr[1],
+                 results_ls = X@b_SpecificResults@a_SpecificShareable@shareable_outp_ls$results_ls,
+                 tables_in_body_lgl = X@tables_in_body_lgl)
+results_ls <- params_ls$results_ls
+```
+
+```{r child="../Child_RMDs/XX_Funs.Rmd", echo=FALSE}
+```
+```{r child="../Child_RMDs/MS_Body.Rmd", echo=FALSE}
+```
+
+\newpage
+# References {-}
+
+<div id="refs"></div>
+```{r echo=FALSE}
+if(!params_ls$tables_in_body_lgl){
+  child_docs_1L_chr <- c("../Child_RMDs/MS_Cndl_Child_Not_In_Body.Rmd")
+}else{
+  child_docs_1L_chr <- NULL
+}
+if(!params_ls$figures_in_body_lgl){
+  child_figs_1L_chr <- c("../Child_RMDs/MS_Cndl_Figs_Not_In_Body.Rmd")
+}else{
+  child_figs_1L_chr <- NULL
+}
+```
+
+```{r, child = child_docs_1L_chr, echo=FALSE}
+```
+
+```{r, child = child_figs_1L_chr, echo=FALSE}
+```
+\newpage
+\appendix
+\counterwithin{figure}{section}
+\counterwithin{table}{section}
+
+# Supplementary Material
+
+```{r child="../Child_RMDs/TA_Body.Rmd", echo=FALSE}
+```

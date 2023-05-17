@@ -1,0 +1,18 @@
+---
+title: "MA_Results"
+author: "Matthew Hamilton"
+date: "13/10/2020"
+output: html_document
+---
+
+```{r echo=FALSE}
+if(params_ls$tables_in_body_lgl){
+  child_docs_ls <- list(Cohort_Profile = "../Child_RMDs/MS_Tables_Cohort_Profile.RMD",
+                        Predrs_Cors = "../Child_RMDs/MS_Tables_Predrs_Cors.RMD",
+                        Long_TTU_Coefs = "../Child_RMDs/MS_Tables_Long_TTU_Coefs.RMD")
+}else{
+    child_docs_ls <- list(Cohort_Profile = NULL,
+                      Predrs_Cors = NULL,
+                      Long_TTU_Coefs = NULL)
+}
+```

@@ -1,0 +1,10 @@
+---
+output: html_document
+---
+
+```{r {{cfscl}}, tab.cap='{{title_1L_chr}}', tab.id = '{{cfscl}}', echo = F, results = 'asis'}
+print_indpnt_predrs_lngl_mdl_coefs(params_ls,
+                                   caption_1L_chr = knitr::opts_current$get("tab.cap"),
+                                   table_1L_chr = knitr::opts_current$get("tab.id"),
+                                   ref_1L_int = {{ref_1L_int}})
+```

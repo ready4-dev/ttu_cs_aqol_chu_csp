@@ -1,0 +1,44 @@
+---
+title: "Manuscript Body"
+output: html_document
+bibliography: ../Data/references.bib
+---
+
+
+# Introduction
+```{r child="../Child_RMDs/MS_Intro_Short.Rmd", echo=FALSE}
+```
+```{r child="../Child_RMDs/MS_Aims.Rmd", echo=FALSE}
+```
+
+# Methods
+```{r child="../Child_RMDs/MS_Method.Rmd", echo=FALSE}
+```
+
+# Results
+```{r child="../Child_RMDs/MS_Results.Rmd", echo=FALSE}
+```
+
+<!-- # Discussion -->
+```{r child="../Child_RMDs/MS_Discussion.Rmd", echo=FALSE}
+```
+
+# Conclusions
+```{r child="../Child_RMDs/MS_Conclusion.Rmd", echo=FALSE}
+```
+
+## Availability of data and materials {-#availability-of-data-and-materials}
+```{r child="../Child_RMDs/MS_Available_Data_And_Resources.Rmd", echo=FALSE}
+```
+
+## Ethics approval {-}
+```{r child="../Child_RMDs/MS_Ethics.Rmd", echo=FALSE}
+```
+
+## Funding {-#funding}
+```{r child="../Child_RMDs/MS_Funding.Rmd", echo=FALSE}
+```
+
+## Conflict of Interest {-#conflict-of-interest}
+```{r child="../Child_RMDs/MS_COI.Rmd", echo=FALSE}
+```

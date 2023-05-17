@@ -1,0 +1,12 @@
+---
+title: "cohort profile table"
+author: "Matthew Hamilton"
+date: "27/01/2021"
+output: html_document
+---
+
+```{r participantstb, tab.cap='Participant characteristics', tab.id = 'participantstb', results="asis"}
+print_cohort_table(params_ls = params_ls,
+                   caption_1L_chr = knitr::opts_current$get("tab.cap"),
+                   mkdn_tbl_ref_1L_chr = paste0("tab:",knitr::opts_current$get("tab.id")))
+```

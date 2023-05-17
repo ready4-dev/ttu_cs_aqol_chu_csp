@@ -1,0 +1,14 @@
+---
+title: "Untitled"
+author: "Matthew Hamilton"
+date: "26/01/2021"
+output: html_document
+---
+
+## `r get_hlth_utl_nm(results_ls)` and candidate predictors
+<!-- Figure start -->Distribution of `r get_hlth_utl_nm(results_ls)` total utility score and sub-domain scores are displayed in Figure \@ref(fig:fig1)<!-- Figure end -->. The mean utility score `r ifelse(is.na(results_ls$cohort_ls$n_fup_1L_dbl),"","at baseline ")` is `r get_hlth_utl_stat(results_ls, stat_1L_chr = "bl_mean")` (SD = `r get_hlth_utl_stat(results_ls, stat_1L_chr = "bl_sd")`)`r ifelse(is.na(results_ls$cohort_ls$n_fup_1L_dbl),"",paste0(" and is ",get_hlth_utl_stat(results_ls, stat_1L_chr = "fup_mean")," (SD = ",get_hlth_utl_stat(results_ls, stat_1L_chr = "fup_sd"),") at follow-up"))`. <!-- Table start -->The distribution of candidate predictor`r ifelse(get_nbr_of_predrs(results_ls, as_words_1L_lgl = F)>1,"s","")`,  `r get_predrs_by_ctg(results_ls, transform_1L_lgl = T, collapse_1L_lgl = T)`, `r ifelse(get_nbr_of_predrs(results_ls, as_words_1L_lgl = F)>1,"are","is")` summarised in `r ifelse(params_ls$output_type_1L_chr=="Word","","Table")` \@ref(tab:predrscors)<!-- Table end -->. `r make_correlation_text(results_ls)` 
+
+```{r, child = child_docs_ls$Predrs_Cors, echo=FALSE}
+```
+```{r, child = child_figs_ls$fig1, echo=FALSE}
+```

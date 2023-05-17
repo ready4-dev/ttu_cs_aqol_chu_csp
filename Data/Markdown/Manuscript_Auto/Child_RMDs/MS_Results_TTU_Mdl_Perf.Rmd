@@ -1,0 +1,23 @@
+---
+title: "TTU"
+author: "Matthew Hamilton"
+date: "26/01/2021"
+output: html_document
+---
+
+## Performance of regression models
+<!-- Table start -->The 10-fold cross-validated model fitting index from TTU models using `r get_ordered_sngl_csnl_mdls(results_ls, select_int = 1)` are reported in `r ifelse(params_ls$output_type_1L_chr=="Word","","Table")` \@ref(tab:tenfoldolstb) in the Supplementary Material<!-- Table end -->. `r make_selected_mdl_text(results_ls)` Predictive ability of each candidate predictor using baseline data were also compared using 10-fold cross-validation.  
+
+```{r echo = F, results='asis'}
+paste0(ifelse(params_ls$output_type_1L_chr=="Word","","Table "),
+       "\\@ref(tab:tenfoldglmtb) illustrates ",
+       ifelse(length(get_ordered_sngl_csnl_mdls(results_ls))>1,"that ",""),
+       make_ten_fold_text(results_ls)#,
+       #make_random_forest_text(results_ls),
+       # ifelse(length(results_ls$ttu_cs_ls$rf_seq_dscdng_chr) > 1,
+       #        " (see Figure \\@ref(fig:importance)). ",
+       #        "")
+       ) %>% writeLines()
+```
+
+`r make_covariates_text(results_ls)`

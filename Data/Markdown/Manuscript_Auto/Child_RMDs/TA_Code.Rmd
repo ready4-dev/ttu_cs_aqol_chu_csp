@@ -1,0 +1,13 @@
+---
+title: "Code"
+author: "Matthew Hamilton"
+date: "22/01/2021"
+output: html_document
+---
+
+<!-- https://bookdown.org/yihui/rmarkdown-cookbook/code-appendix.html -->
+
+# Appendix: All code for this report
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```

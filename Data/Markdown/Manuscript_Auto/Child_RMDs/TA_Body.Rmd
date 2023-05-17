@@ -1,0 +1,23 @@
+---
+title: "Appendix"
+author: "Matthew Hamilton"
+date: "06/08/2020"
+output: html_document
+---
+
+## Additional tables
+```{r child="../Child_RMDs/TA_Tables.Rmd", echo=FALSE}
+```
+
+\newpage
+```{r echo = F}
+if(length(results_ls$ttu_cs_ls$rf_seq_dscdng_chr) > 1){
+  ta_fig_child_chr <- NULL #"../Child_RMDs/TA_Figures.Rmd"
+}else{
+  ta_fig_child_chr <- NULL
+}
+
+```
+`r ifelse(is.null(ta_fig_child_chr),"","## Additional figures")`
+```{r child=ta_fig_child_chr, echo=FALSE}
+```

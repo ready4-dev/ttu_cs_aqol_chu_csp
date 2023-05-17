@@ -1,0 +1,13 @@
+---
+title: "Untitled"
+author: "Matthew Hamilton"
+date: "27/01/2021"
+output: html_document
+---
+```{r, echo=FALSE, results='asis'}
+purrr::map(1:length(results_ls$ttu_lngl_ls$best_mdls_tb$model_type),
+           ~ list(cfscl = paste0("cfscl",.x),
+                  ref_1L_int = .x,
+                  title_1L_chr = make_indpnt_predrs_lngl_tbl_title(results_ls, ref_1L_int = .x))) %>%
+knit_from_tmpl(path_to_tmpl_1L_chr = "../Child_RMDs/MS_Tables_Lngl_TTUs_Tmpl.Rmd")
+```

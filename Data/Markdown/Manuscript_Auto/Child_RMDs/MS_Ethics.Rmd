@@ -1,0 +1,5 @@
+---
+title: "MS_Ethics"
+output: html_document
+---
+`r make_ethics_text(results_ls)`
