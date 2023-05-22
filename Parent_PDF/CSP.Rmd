@@ -273,16 +273,24 @@ We now generate tables and charts that describe our dataset. These are saved in 
 
 ```{r message=FALSE, results='hide', warning=FALSE}
 projects_ls <- projects_ls %>% 
-  purrr::map2(list(c("############################################"),#PICKUPHERE
-                   c("############################################")),~ renewSlot(.x,
+  purrr::map(~ {
+    if(inherits(.x@a_ScorzProfile,"ScorzAqol6Adol")){ # Modify when fns exported
+      x_labels_chr <-  manufacture_ScorzAqol6(.x@a_ScorzProfile, what_1L_chr = "domains")
+      }else{
+        x_labels_chr <- manufacture_ScorzProfile(.x@a_ScorzProfile, what_1L_chr = "domains", 
+                                                 custom_args_ls = list(string = .x@b_SpecificParameters@itm_labels_chr), custom_fn = Hmisc::capitalize)
+                }
+                renewSlot(.x,
                           "c_SpecificProject",
-                         # authorSlot(.x, "c_SpecificProject", 
-                         #            what_1L_chr = "descriptives",
-                         #            digits_1L_int = 3L)
-                         author_SpecificModels(.x@c_SpecificProject,
-                                               what_1L_chr = "descriptives",
-                                               digits_1L_int = 3L,
-                                               x_labels_chr = .y))) %>%
+                          # authorSlot(.x, "c_SpecificProject", 
+                          #            what_1L_chr = "descriptives",
+                          #            digits_1L_int = 3L)
+                          author_SpecificModels(.x@c_SpecificProject,
+                                                what_1L_chr = "descriptives",
+                                                digits_1L_int = 3L,
+                                                x_labels_chr = x_labels_chr))
+                
+              }) %>%
   stats::setNames(names(projects_ls))
 
 # A <- renewSlot(A, "c_SpecificProject",
@@ -299,17 +307,22 @@ projects_ls <- projects_ls %>%
 ## Undertake exploratory modelling using baseline dataset
 
 ### Identify preferred model types
-We next compare the performance of different model types. This step saves model objects and plots to a sub-directory of our output directory.
+For each utility instrument, we next compare the performance of different model types. This step saves model objects and plots to a sub-directory of our output directory.
 
 ```{r message=FALSE, results='hide', warning=FALSE}
-A <- renewSlot(A, "c_SpecificProject",
-               investigate_SpecificModels(A@c_SpecificProject,
-                                          depnt_var_max_val_1L_dbl = 0.99,
+projects_ls <- projects_ls %>% 
+  purrr::map(~ 
+               renewSlot(.x, "c_SpecificProject",
+               investigate_SpecificModels(.x@c_SpecificProject,
+                                          depnt_var_max_val_1L_dbl = 0.99999,
+                                          depnt_var_min_val_1L_dbl = 0.00001,
                                           session_ls = sessionInfo())
-               # investigateSlot(A, "c_SpecificProject",
+               # investigateSlot(.x, "c_SpecificProject",
                #                 depnt_var_max_val_1L_dbl = 0.99,
                #                 session_ls = sessionInfo())
                )
+               ) %>%
+  stats::setNames(names(projects_ls))
 ```
 
 ```{r}
