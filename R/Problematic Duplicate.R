@@ -7,12 +7,12 @@ make_csnl_example_dict <- function(ds_tb){ # Add days out of role, utility diffe
            metadata_1L_lgl = F) 
   dictionary_r3 <- dictionary_r3 %>% # Modify CALD to cald
     dplyr::filter(var_nm_chr %in% names(ds_tb)) %>%
-    dplyr::filter(!var_nm_chr %in% c("CALD", "c_p_diag_s", "d_ATSI", "d_gender", "d_studying_working")) %>%
-    renew.ready4use_dictionary(var_nm_chr = c(setdiff(names(ds_tb),dictionary_r3$var_nm_chr),"c_p_diag_s", "d_ATSI", "d_gender","d_studying_working") %>% sort(),
-                               var_ctg_chr = c(rep("clinical symptom",5),
+    dplyr::filter(var_nm_chr != "CALD") %>%
+    renew.ready4use_dictionary(var_nm_chr = setdiff(names(ds_tb),dictionary_r3$var_nm_chr) %>% sort(),
+                               var_ctg_chr = c(rep("clinical symptom",4),
                                                rep("multi-attribute utility instrument question",9),
                                                "health_utility",
-                                               rep("demographic",7),
+                                               rep("demographic",4),
                                                rep("difference",2),
                                                "psychological distress",
                                                "quality of life",
@@ -22,14 +22,10 @@ make_csnl_example_dict <- function(ds_tb){ # Add days out of role, utility diffe
                                                 "days out of role",
                                                 "days cut back on usual activities",
                                                 "primary diagnosis group",
-                                                "primary diagnosis",
                                                 paste0("Child Health Utility (9 Dimension) question ",1:9),
                                                 "Child Health Utility (9 Dimension) total score",
-                                                "Aboriginal and Torres Strait Islander",
-                                                "culturally and linguistically diverse",
                                                 "in employment",
                                                 "employment type",
-                                                "gender",
                                                 "in education",
                                                 "education and employment",
                                                 "Difference between AQoL-6D and CHU-9D total scores",
@@ -41,7 +37,7 @@ make_csnl_example_dict <- function(ds_tb){ # Add days out of role, utility diffe
                                                 "validation unweighted aqol total",
                                                 "validation weighted aqol total"
                                ),
-                               var_type_chr = c(setdiff(names(ds_tb),dictionary_r3$var_nm_chr),"c_p_diag_s", "d_ATSI", "d_gender","d_studying_working") %>% 
+                               var_type_chr = setdiff(names(ds_tb),dictionary_r3$var_nm_chr) %>% 
                                  sort() %>% purrr::map_chr(~{
                                    classes_chr <- ds_tb[,.x][[1]] %>% class()
                                    ifelse("numeric" %in% classes_chr,
@@ -516,10 +512,8 @@ transform_csnl_example_ds <- function(ds_df){
                                   d_age,
                                   K10,
                                   s_IRSD,
-                                  SOFAS), ~as.integer(.x))) %>%
-  dplyr::mutate(dplyr::across(c(c_p_diag_s,
-                                d_ATSI,
-                                d_gender), ~as.factor(.x)))
+                                  SOFAS,
+    ), ~as.integer(.x)))
   ds_tb <- ds_tb %>%
     dplyr::mutate(c_days_oor = c_days_cut_back + c_days_unable) %>%
     dplyr::mutate(d_studying_working = dplyr::case_when(purrr::map2_lgl(as.character(d_employed), as.character(d_studying), ~ is.na(.x) | is.na(.y)) ~ NA_character_,
@@ -528,10 +522,10 @@ transform_csnl_example_ds <- function(ds_df){
                                                         purrr::map2_lgl(as.character(d_employed), as.character(d_studying), ~ .x == "Yes" && .y == "No") ~ "Working only",
                                                         purrr::map2_lgl(as.character(d_employed), as.character(d_studying), ~ .x == "Yes" && .y == "Yes") ~ "Studying and working",
                                                         T ~ "Uncategorised"
-                                                        ) %>% as.factor()) %>%
+                                                        )) %>%
     dplyr::mutate(difference_mauis = validation_aqol_w - CHU9D) %>%
     dplyr::mutate(difference_aqol_calcs = NA_real_)
-  ds_tb <- youthvars::add_uids_to_tbs_ls(list(ds_tb),"Participant_") %>% purrr::pluck(1)  %>% ready4::remove_lbls_from_df()
+  ds_tb <- youthvars::add_uids_to_tbs_ls(list(ds_tb),"Participant_") %>% purrr::pluck(1)
   return(ds_tb)
 }
 transform_ds_for_item_plt <- function(data_tb,
@@ -996,62 +990,16 @@ fit_ts_model_with_brm <- function (data_tb,# rename lngl ?
                       iter = iters_1L_int, seed = seed_1L_int, prior = prior_ls, control = control_ls)
   return(mdl_ls)
 }
-get_signft_covars <- function (mdls_with_covars_smry_tb, covar_var_nms_chr, what_1L_chr = "any", X_Ready4useDyad = NULL)
+get_signft_covars <- function (mdls_with_covars_smry_tb, covar_var_nms_chr)
 {
-
-    signif_vars_chr <- mdls_with_covars_smry_tb$Significant %>%
-      purrr::map(~strsplit(.x, " ")) %>% purrr::flatten() %>%
-      purrr::flatten_chr() %>% unique()
-    signt_covars_chr <- covar_var_nms_chr[covar_var_nms_chr %in%
-                                            signif_vars_chr]
-    if(what_1L_chr == "all"){
-      signt_covars_chr <- signt_covars_chr[signt_covars_chr %>% purrr::map_lgl(~sum((mdls_with_covars_smry_tb$Significant %>%
-                                                                                      purrr::map(~strsplit(.x, " ")) %>% purrr::flatten() %>%
-                                                                                      purrr::flatten_chr()) ==.x)==length(signt_covars_chr))]
-    }
-    if(!is.null(X_Ready4useDyad)){
-      factor_vars_chr <- X_Ready4useDyad@dictionary_r3 %>% 
-        ready4use::renew.ready4use_dictionary(filter_cdn_1L_chr = "var_nm_chr %in% covar_var_nms_chr & var_type_chr == 'factor'") %>% 
-        dplyr::pull(var_nm_chr) %>% as.character()
-      dummys_ls <- purrr::map(factor_vars_chr,
-                              ~ paste0(.x,eval(parse(text=paste0("levels(X_Ready4useDyad@ds_tb$",.x,")")))))
-      
-      signt_dumys_ls <- mdls_with_covars_smry_tb$Significant %>%
-        purrr::map(~{
-          terms_1L_chr <- .x
-          dummys_chr <- dummys_ls %>% purrr::flatten_chr()
-          dummys_chr[dummys_chr %>%
-            purrr::map_lgl(~stringr::str_detect(terms_1L_chr,.x))]
-        })
-      signt_dumys_chr <- signt_dumys_ls %>% purrr::flatten_chr() %>% unique()
-      if(what_1L_chr == "all" && !identical(signt_dumys_chr, character(0))){
-        signt_dumys_chr  <- signt_dumys_chr[signt_dumys_chr %>% purrr::map_lgl(~sum((signt_dumys_ls %>% purrr::flatten_chr())==.x)==length(signt_dumys_chr))]
-      }
-      signt_covars_chr <- c(signt_covars_chr, signt_dumys_chr) %>% sort()
-      }
+  signif_vars_chr <- mdls_with_covars_smry_tb$Significant %>%
+    purrr::map(~strsplit(.x, " ")) %>% purrr::flatten() %>%
+    purrr::flatten_chr() %>% unique()
+  signt_covars_chr <- covar_var_nms_chr[covar_var_nms_chr %in%
+                                          signif_vars_chr]
   if(identical(signt_covars_chr, character(0)))
     signt_covars_chr <- NA_character_
   return(signt_covars_chr)
-}
-get_mdls_with_signft_covars <- function(outp_smry_ls, 
-                                        params_ls_ls){
-  signft_covars_chr <- outp_smry_ls$mdls_with_covars_smry_tb %>%
-    get_signft_covars(covar_var_nms_chr = params_ls_ls$params_ls$candidate_covar_nms_chr) # (Maybe) Needs editing to account for dummy variables - Need to check.  Would then need to update make_results_ls_spine
-  
-  signft_vars_ls <- outp_smry_ls[["mdls_with_covars_smry_tb"]]$Significant %>%
-    purrr::map(~strsplit(.x, " ")) %>% purrr::flatten()
-  mdls_with_signft_covars_ls <- signft_covars_chr %>%
-    purrr::map(~{
-      covar_nm_1L_chr <- .x
-      mdls_chr <- outp_smry_ls$mdls_with_covars_smry_tb %>%
-        dplyr::filter(purrr::map_lgl(signft_vars_ls,
-                                     ~ any(.x == covar_nm_1L_chr))) %>%
-        dplyr::pull(variable)
-      mdls_chr
-      
-    }) %>%
-    stats::setNames(signft_covars_chr)
-  return(mdls_with_signft_covars_ls)
 }
 investigate_SpecificModels <- function(x,
                                        depnt_var_max_val_1L_dbl = Inf,
@@ -1710,7 +1658,7 @@ make_smry_of_mdl_outp <- function (data_tb,
                                              evaluate_1L_lgl = F)
   smry_of_one_predr_mdl_tb <- purrr::map_dfr(folds_ls, ~{
     model_mdl <- make_mdl(data_tb[-.x,], depnt_var_nm_1L_chr = depnt_var_nm_1L_chr,
-                          depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl, # Unnecessary
+                          #depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl, # Unnecessary
                           start_1L_chr = start_1L_chr, tfmn_1L_chr = tfmn_1L_chr,
                           predr_var_nm_1L_chr = predr_var_nm_1L_chr, covar_var_nms_chr = covar_var_nms_chr,
                           mdl_type_1L_chr = mdl_type_1L_chr, mdl_types_lup = mdl_types_lup, control_1L_chr = control_1L_chr)
@@ -2821,16 +2769,14 @@ make_plot_fn_and_args_ls <- function(type_1L_chr,
   return(plot_fn_and_args_ls)
 }
 investigate_SpecificPredictors <- function(x,
-                                           depnt_var_min_val_1L_dbl = numeric(0),
-                                           signft_covars_cndn_1L_chr = "any"){
+                                           depnt_var_min_val_1L_dbl = numeric(0)){
   results_ls <- write_predr_and_covars_cmprsn(scored_data_tb = x@a_YouthvarsProfile@a_Ready4useDyad@ds_tb,
                                               bl_tb = x@c_SpecificResults@b_SpecificPrivate@private_outp_ls$bl_tb,
                                               depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
                                               ds_smry_ls = x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$ds_smry_ls,
                                               mdl_smry_ls = x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$mdl_smry_ls,
                                               output_data_dir_1L_chr = x@b_SpecificParameters@paths_ls$output_data_dir_1L_chr,
-                                              seed_1L_int = x@b_SpecificParameters@seed_1L_int,
-                                              signft_covars_cndn_1L_chr = signft_covars_cndn_1L_chr)
+                                              seed_1L_int = x@b_SpecificParameters@seed_1L_int)
   rename_lup <- x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$rename_lup
   session_ls <- x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$session_ls
   x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls <- append(results_ls[-1],
@@ -3024,7 +2970,7 @@ write_mdl_type_sngl_outps <- function (data_tb, folds_1L_int = 10, depnt_var_min
   if (!is.null(folds_1L_int)) {
     smry_of_one_predr_mdl_tb <- make_smry_of_mdl_outp(data_tb,
                                                       folds_1L_int = folds_1L_int, 
-                                                      depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
+                                                      depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl, # Potential issue
                                                       depnt_var_nm_1L_chr = depnt_var_nm_1L_chr,
                                                       tfmn_1L_chr = tfmn_1L_chr, predr_var_nm_1L_chr = predr_var_nm_1L_chr, covar_var_nms_chr = covar_var_nms_chr,
                                                       mdl_type_1L_chr = mdl_type_1L_chr, mdl_types_lup = mdl_types_lup, start_1L_chr = start_1L_chr,
@@ -3094,8 +3040,7 @@ write_predr_and_covars_cmprsn <- function(scored_data_tb,
                                           ds_smry_ls,
                                           mdl_smry_ls,
                                           output_data_dir_1L_chr,
-                                          seed_1L_int = 1234,
-                                          signft_covars_cndn_1L_chr = "any"){
+                                          seed_1L_int = 1234){
   mdl_smry_ls$predr_cmprsn_tb <- write_predr_cmprsn_outps(data_tb = bl_tb,
                                                           depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
                                                           path_to_write_to_1L_chr = output_data_dir_1L_chr,
@@ -3135,10 +3080,7 @@ write_predr_and_covars_cmprsn <- function(scored_data_tb,
                                                                      fl_nm_pfx_1L_chr = "D_CT",
                                                                      mdl_types_lup = mdl_smry_ls$mdl_types_lup)
   mdl_smry_ls$signt_covars_chr <- get_signft_covars(mdls_with_covars_smry_tb = mdl_smry_ls$mdls_with_covars_smry_tb,
-                                                    covar_var_nms_chr = ds_smry_ls$candidate_covar_nms_chr,
-                                                    X_Ready4useDyad = Ready4useDyad(ds_tb = scored_data_tb,
-                                                                                    dictionary_r3 = ds_smry_ls$dictionary_tb),
-                                                    what_1L_chr = signft_covars_cndn_1L_chr)
+                                                    covar_var_nms_chr = ds_smry_ls$candidate_covar_nms_chr)
   predr_and_covars_cmprsn_ls <- list(bl_tb = bl_tb,
                                      ds_smry_ls = ds_smry_ls,
                                      mdl_smry_ls = mdl_smry_ls)
@@ -3151,8 +3093,7 @@ write_predr_and_mdl_tstng_results <- function(scored_data_tb,
                                               mdl_smry_ls,
                                               session_data_ls,
                                               output_data_dir_1L_chr,
-                                              seed_1L_int = 1234,
-                                              signft_covars_cndn_1L_chr = "any"){
+                                              seed_1L_int = 1234){
   
   cmprsn_ls <- write_mdl_cmprsn(scored_data_tb = scored_data_tb,
                                 depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl, 
@@ -3167,8 +3108,7 @@ write_predr_and_mdl_tstng_results <- function(scored_data_tb,
                                              ds_smry_ls = cmprsn_ls$ds_smry_ls,
                                              mdl_smry_ls  = cmprsn_ls$mdl_smry_ls,
                                              output_data_dir_1L_chr = output_data_dir_1L_chr,
-                                             seed_1L_int = seed_1L_int,
-                                             signft_covars_cndn_1L_chr  = signft_covars_cndn_1L_chr)
+                                             seed_1L_int = seed_1L_int)
   if(ifelse(is.null(cmprsn_ls$mdl_smry_ls$prefd_covars_chr),
             T,
             is.na(cmprsn_ls$mdl_smry_ls$prefd_covars_chr[1]))){
@@ -3228,8 +3168,7 @@ write_scndry_analysis <- function(valid_params_ls_ls,
                                   candidate_predrs_chr = NULL,
                                   new_dir_nm_1L_chr = "F_TS_Mdls",
                                   predictors_lup = NULL,
-                                  prefd_covars_chr = NA_character_,
-                                  signft_covars_cndn_1L_chr = "any"){
+                                  prefd_covars_chr = NA_character_) {
   analysis_params_ls <- valid_params_ls_ls$params_ls %>%
     append(path_params_ls[1:2])
   rename_lup <- valid_params_ls_ls$rename_lup
@@ -3314,8 +3253,7 @@ write_scndry_analysis <- function(valid_params_ls_ls,
                                               ds_smry_ls = cmprsns_ls$ds_smry_ls,
                                               mdl_smry_ls  = cmprsns_ls$mdl_smry_ls,
                                               output_data_dir_1L_chr = path_params_ls$paths_ls$write_to_dir_nm_1L_chr,
-                                              seed_1L_int = params_ls$seed_1L_int,
-                                              signft_covars_cndn_1L_chr = signft_covars_cndn_1L_chr)
+                                              seed_1L_int = params_ls$seed_1L_int)
   if(!is.null(params_ls$prefd_covars_chr)){
     cmprsns_ls$mdl_smry_ls$prefd_covars_chr <- params_ls$prefd_covars_chr
   }
