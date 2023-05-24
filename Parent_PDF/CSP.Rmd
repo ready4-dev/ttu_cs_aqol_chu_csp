@@ -51,6 +51,7 @@ Next load the libraries required to run this program.
 
 ```{r message=FALSE, warning=FALSE}
 library(ready4)
+library(ready4show)
 library(ready4use)
 library(youthvars)
 library(scorz)
@@ -320,7 +321,7 @@ projects_ls <- projects_ls %>%
 ```
 
 ### Identify preferred predictors and covariates
-Next we assess multiple versions of our preferred model type - one single predictor model for each of our candidate predictors and the same models with candidate covariates added. A number of model/plot objects are saved to a sub-directory of our output directory.
+Next we assess multiple versions of our preferred model type - one single predictor model for each of our candidate predictors and the same models with candidate covariates added. A number of model/plot objects are saved to a sub-directory of our output directory. We specify the criterion that for each utility measure, candidate covariates must be significant parameters in all preferred models (the "all" value for `signft_covars_cndn_1L_chr`) to be considered for subsequent steps. To relax this condition, supply "any" instead of "all".
 
 ```{r message=FALSE, results='hide', warning=FALSE}
 projects_ls <- projects_ls %>% 
@@ -352,26 +353,25 @@ projects_ls <- projects_ls %>%
 ```{r}
 # Covariates that were significant in all models can be returned by uncommenting the following
 # purrr::map(projects_ls, ~procure(.x@c_SpecificProject, type_1L_chr = "results", what_1L_chr = "signt_covars"))
-# procure(A@c_SpecificProject, type_1L_chr = "results", what_1L_chr = "signt_covars")
 ```
 
 
 ### Assess performance of final model specification 
-After reviewing the output of the previous step, we specify the covariates we wish to add to the models.
+After reviewing the output of the previous step, we specify the covariates we wish to add to the models. In the below example, we use the covariates that were automatically identified as meeting the criterion we specified earlier.
 
 ```{r message=FALSE, results='hide', warning=FALSE}
-A <- renewSlot(A, "c_SpecificProject", # Pick up here - need to add method for adding new dummy vars
-               renew(procureSlot(A, "c_SpecificProject"),
-                     new_val_xx = c("dage", "cdayscutback", "cdaysunable"), # Modify based on manual inspection in previous steps.
-                     type_1L_chr = "results",
-                     what_1L_chr = "prefd_covars"))
+projects_ls <- projects_ls %>% 
+  purrr::map(~ renewSlot(.x, "c_SpecificProject", 
+                         renew(procureSlot(.x, "c_SpecificProject"),type_1L_chr = "results", what_1L_chr = "prefd_covars",
+                               new_val_xx = procure(.x@c_SpecificProject, type_1L_chr = "results", what_1L_chr = "signt_covars"))))
+# To manually over-ride the default selections, replace the value supplied to new_val_xx, e.g. new_val_xx = c("cdaysoor", "dage", if(inherits(.x@a_ScorzProfile,"ScorzAqol6Adol")){ "dgender"}),
 ```
 
 We now assess the multivariate models.  More model/plot objects are saved to a sub-directory of our output directory.
 
 ```{r message=FALSE, results='hide', warning=FALSE}
-A <- renewSlot(A, "c_SpecificProject",
-               investigateSlot(A, "c_SpecificProject"))
+projects_ls <- projects_ls %>% 
+  purrr::map(~ renewSlot(.x, "c_SpecificProject", investigate_SpecificFixed(.x@c_SpecificProject, depnt_var_min_val_1L_dbl = 0.00001))) #investigateSlot(.x, "c_SpecificProject")
 ```
 
 ## Create bayesian models for use in prediction
@@ -381,18 +381,20 @@ We next reformulate the models we finalised in the previous step as bayesian mod
 We first modify the default parameters used when creating the models to address potential convergence issues.
 
 ```{r}
-A <- renewSlot(A,"c_SpecificProject@b_SpecificParameters@control_ls", # This step may not be necessary on the real data.
-               new_val_xx = list(adapt_delta = 0.95))
+projects_ls <- projects_ls %>% 
+  purrr::map(~ renewSlot(.x, "c_SpecificProject@b_SpecificParameters@control_ls", list(adapt_delta = 0.98))) 
+# This step may not be necessary owhen using the real data.
 ```
 
-
-For our primary analysis, we use the longitudinal formulation of the models we previously selected. A series of large model files are written to a sub-directory of the local output data directory.
+For our primary analysis, we use a baysesian formulation of the models we previously selected. A series of large model files are written to a sub-directory of the local output data directory.
 
 ```{r }
-A <- renewSlot(A, "c_SpecificProject",
-               investigate_SpecificMixed(A@c_SpecificProject)
-               #investigateSlot(A, "c_SpecificProject")
-               )
+projects_ls <- projects_ls %>% 
+  purrr::map(~ renewSlot(.x, "c_SpecificProject", investigate_SpecificMixed(.x@c_SpecificProject))) ##investigateSlot(.x, "c_SpecificProject")
+# A <- renewSlot(A, "c_SpecificProject",
+#                investigate_SpecificMixed(A@c_SpecificProject)
+#                #investigateSlot(A, "c_SpecificProject")
+#                )
 ```
 
 ```{r}
