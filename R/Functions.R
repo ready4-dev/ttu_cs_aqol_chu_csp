@@ -1,5 +1,152 @@
 ## For stand alone program
-make_csnl_example_dict <- function(ds_tb){ # Add days out of role, utility difference
+
+## From ready4show
+manufacture.ready4show_correspondences <- function(x,
+                                                   data_ls,
+                                                   flatten_1L_chr = F,
+                                                   type_1L_chr = "new",
+                                                   what_1L_chr = "names",
+                                                   ...){
+  if(what_1L_chr == "names"){
+    object_xx <- data_ls %>% purrr::map(~.x %>%
+                                          purrr::map_chr(~ifelse(.x %in% x$old_nms_chr,
+                                                                 ready4::get_from_lup_obj(x,
+                                                                                          match_value_xx = .x,
+                                                                                          match_var_nm_1L_chr = ifelse(type_1L_chr == "old","new_nms_chr","old_nms_chr"),
+                                                                                          target_var_nm_1L_chr = ifelse(type_1L_chr == "old","old_nms_chr","new_nms_chr")),
+                                                                 .x)))
+  }
+  if(flatten_1L_lgl){
+    object_xx <- object_xx %>% purrr::flatten_chr()
+  }
+  return(object_xx)
+}
+## From ready4use
+manufacture_Ready4useDyad <- function(x,
+                                      correspondences_r3 = ready4show::ready4show_correspondences(),
+                                      indcs_int = 1L,
+                                      flatten_1L_lgl = F,
+                                      match_1L_chr = character(0),
+                                      restrict_to_chr = character(0),
+                                      remove_ctg_1L_lgl = F,
+                                      target_1L_chr = "var_ctg_chr",
+                                      type_1L_chr = "all",
+                                      what_1L_chr = "factors",
+                                      ...){
+  if(what_1L_chr %in% c("factors","factors-c","factors-d")){
+    factor_vars_chr <- x@dictionary_r3 %>% 
+      ready4use::renew.ready4use_dictionary(filter_cdn_1L_chr = "var_nm_chr %in% covar_var_nms_chr & var_type_chr == 'factor'") %>% 
+      dplyr::pull(var_nm_chr) %>% as.character()
+    if(!identical(restrict_to_chr, character(0))){
+      factor_vars_chr <- intersect(factor_vars_chr, restrict_to_chr) 
+    }
+    object_xx <- purrr::map(factor_vars_chr,
+                            ~ paste0(.x,eval(parse(text=paste0("levels(x@ds_tb$",.x,")"))))) %>%
+      stats::setNames(factor_vars_chr)
+    if(what_1L_chr == "factors-d"){
+      lookup_ls <- object_xx 
+    }
+    if(type_1L_chr == "base"){
+      object_xx <- object_xx %>% purrr::map2(indcs_int, ~ .x[.y])
+    }
+    if(type_1L_chr == "dummys"){
+      object_xx <- object_xx %>% purrr::map2(indcs_int, ~ .x[-.y])
+    }
+    if(remove_ctg_1L_lgl){
+      object_xx <- object_xx %>% purrr::map2(names(object_xx), ~ stringr::str_remove(.x,.y))
+    }
+    if(!identical(correspondences_r3, ready4show::ready4show_correspondences())){
+      object_xx <- manufacture.ready4show_correspondences(correspondences_r3, # update to ready4show::manufacture.ready4show_correspondences
+                                                          data_ls = object_xx,
+                                                          flatten_1L_chr = F, # Correct
+                                                          type_1L_chr = "new",
+                                                          what_1L_chr = "names",
+                                                          ...) 
+    }
+    if(flatten_1L_lgl | what_1L_chr %in% c("factors-c","factors-d")){
+      object_xx <- object_xx %>% purrr::flatten_chr()
+    }
+    if(what_1L_chr %in% c("factors-c", "factors-d")){
+      object_xx <- ready4show::ready4show_correspondences(ready4show::make_pt_ready4show_correspondences(old_nms_chr = object_xx, ...))
+    if(what_1L_chr == "factors-d"){
+      object_xx <- ready4use_dictionary(make_pt_ready4use_dictionary(var_nm_chr = object_xx %>% purrr::pmap_chr(~ifelse(is.na(as.character(..2)),
+                                                                                                                        as.character(..1),as.character(..2))),
+                                                                     var_ctg_chr = object_xx$old_nms_chr %>%  purrr::map_chr(~{
+                                                                       level_1L_chr <- .x
+                                                                       names(lookup_ls)[purrr::map_lgl(lookup_ls,~level_1L_chr %in% .x)]
+                                                                     }),
+                                                                     var_desc_chr = lookup_ls %>% 
+                                                                       purrr::map2(names(lookup_ls), 
+                                                                                   ~ stringr::str_remove(.x,.y)) %>% 
+                                                                       purrr::map2(indcs_int, 
+                                                                                   ~ {
+                                                                                     if(!type_1L_chr %in% c("base","dummys")){
+                                                                                       description_chr <- .x
+                                                                                     }
+                                                                                     if(type_1L_chr == "base"){
+                                                                                       description_chr <- .x[.y]
+                                                                                     }
+                                                                                     if(type_1L_chr == "dummys"){
+                                                                                       description_chr <- .x[-.y]
+                                                                                     }
+                                                                                     description_chr
+                                                                                   }) %>% purrr::flatten_chr(),
+                                                                     var_type_chr = object_xx$old_nms_chr %>%  
+                                                                       purrr::map(~{
+                                                                         level_1L_chr <- .x
+                                                                         purrr::map2(lookup_ls, indcs_int,
+                                                                                     ~if(level_1L_chr %in% .x[.y]){
+                                                                                       "base"
+                                                                                     }else{
+                                                                                       if(level_1L_chr %in% .x[-.y]){
+                                                                                         "dummy"#rep("dummy", length(.x[-.y]))
+                                                                                       }else{
+                                                                                         NULL
+                                                                                       }
+                                                                                     }) %>% purrr::discard(is.null) %>%
+                                                                           purrr::flatten_chr()
+                                                                       }) %>% purrr::flatten_chr()))
+    }
+      if(!identical(match_1L_chr, character(0))){
+        object_xx <- ready4::get_from_lup_obj(object_xx,
+                                              match_value_xx = match_1L_chr,
+                                              match_var_nm_1L_chr = ifelse(what_1L_chr == "factors-d","var_nm_chr","old_nms_chr"),
+                                              target_var_nm_1L_chr = ifelse(what_1L_chr == "factors-d",target_1L_chr,"new_nms_chr"))
+      }
+      
+      }
+  }
+  return(object_xx)
+}
+renew_Ready4useDyad <- function(x,
+                                remove_old_lbls_1L_lgl = T,
+                                tfmn_1L_chr = "capitalise",
+                                type_1L_chr = "label"){
+  if(type_1L_chr %in% c("label","case")){
+    dictionary_tb <- x@dictionary_r3
+    if(tfmn_1L_chr == "capitalise")
+      dictionary_tb$var_desc_chr <- dictionary_tb$var_desc_chr %>%
+        Hmisc::capitalize()
+    if(tfmn_1L_chr == "title")
+      dictionary_tb$var_desc_chr <- dictionary_tb$var_desc_chr %>%
+        stringr::str_to_title()
+  }
+  if(type_1L_chr == "case"){
+    x@dictionary_r3 <- dictionary_tb
+  }
+  if(type_1L_chr == "label"){
+    tfd_ds_tb <- add_labels_from_dictionary(x@ds_tb,
+                                            dictionary_tb = dictionary_tb %>% ready4::remove_lbls_from_df(),
+                                            remove_old_lbls_1L_lgl = remove_old_lbls_1L_lgl)
+    x@ds_tb <- tfd_ds_tb
+  }
+  if(type_1L_chr == "unlabel"){
+    x@ds_tb <- remove_labels_from_ds(x@ds_tb)
+  }
+  return(x)
+}
+## From youthvars
+make_csnl_example_dict <- function(ds_tb){ # New to youthvars
   dictionary_r3 <- Ready4useRepos(dv_nm_1L_chr = "TTU",
                                   dv_ds_nm_1L_chr = "https://doi.org/10.7910/DVN/DKDIB0", 
                                   dv_server_1L_chr = "dataverse.harvard.edu") %>% 
@@ -53,56 +200,6 @@ make_csnl_example_dict <- function(ds_tb){ # Add days out of role, utility diffe
     dplyr::arrange(var_ctg_chr, var_nm_chr)
   dictionary_r3
 }
-make_csnl_example_predrs <- function(){
-  predictors_r3 <- Ready4useRepos(dv_nm_1L_chr = "TTU", 
-                                  dv_ds_nm_1L_chr = "https://doi.org/10.7910/DVN/DKDIB0", 
-                                  dv_server_1L_chr = "dataverse.harvard.edu") %>%
-    ingest(fls_to_ingest_chr = c("predictors_r3"),
-           metadata_1L_lgl = F)
-  predictors_r3 <- renew.specific_predictors(predictors_r3,
-                                             filter_cdn_1L_chr = "short_name_chr == 'SOFAS'") %>%
-    renew.specific_predictors(short_name_chr = c("K10", "MLT", "CHU9D", "AQOL6D"),
-                              long_name_chr = c("K10 total score", "MLT total score", "CHU9D health utility", "AQOL6D health utility"),
-                              min_val_dbl = c(10,0,-0.1059,0.03),
-                              max_val_dbl = c(50,100,1,1),
-                              class_chr = c("integer","numeric","numeric","numeric"),
-                              increment_dbl = 1,
-                              class_fn_chr = c("as.integer","as.double","as.double","youthvars::youthvars_aqol6d_adol"), # update when new youthvars classes are created
-                              mdl_scaling_dbl = c(0.01,0.01,1,1),
-                              covariate_lgl = F) %>%
-    dplyr::mutate(covariate_lgl = dplyr::case_when(short_name_chr == "SOFAS" ~ F,
-                                                   T ~ covariate_lgl))
-  return(predictors_r3)
-}
-## From ready4use
-renew_Ready4useDyad <- function(x,
-                                remove_old_lbls_1L_lgl = T,
-                                tfmn_1L_chr = "capitalise",
-                                type_1L_chr = "label"){
-  if(type_1L_chr %in% c("label","case")){
-    dictionary_tb <- x@dictionary_r3
-    if(tfmn_1L_chr == "capitalise")
-      dictionary_tb$var_desc_chr <- dictionary_tb$var_desc_chr %>%
-        Hmisc::capitalize()
-    if(tfmn_1L_chr == "title")
-      dictionary_tb$var_desc_chr <- dictionary_tb$var_desc_chr %>%
-        stringr::str_to_title()
-  }
-  if(type_1L_chr == "case"){
-    x@dictionary_r3 <- dictionary_tb
-  }
-  if(type_1L_chr == "label"){
-    tfd_ds_tb <- add_labels_from_dictionary(x@ds_tb,
-                                            dictionary_tb = dictionary_tb %>% ready4::remove_lbls_from_df(),
-                                            remove_old_lbls_1L_lgl = remove_old_lbls_1L_lgl)
-    x@ds_tb <- tfd_ds_tb
-  }
-  if(type_1L_chr == "unlabel"){
-    x@ds_tb <- remove_labels_from_ds(x@ds_tb)
-  }
-  return(x)
-}
-## From youthvars
 make_item_plt <- function(tfd_data_tb,
                           var_nm_1L_chr,
                           x_label_1L_chr,
@@ -447,7 +544,7 @@ make_var_by_round_plt <- function(data_tb,
                    axis.title = ggplot2::element_text(size=ggplot2::rel(axis_title_sclg_1L_dbl)))
   return(var_by_round_plt)
 }
-transform_csnl_example_ds <- function(ds_df){
+transform_csnl_example_ds <- function(ds_df){ # New to youthvars
   ds_tb <- ds_df %>% 
     tibble::as_tibble() %>%
     dplyr::mutate(c_p_diag_grouped = dplyr::case_when(as.character(DiagnosisPrimary) %in% c("Acute stress disorder",
@@ -728,6 +825,146 @@ write_descv_tbls <- function(data_tb,
                                                                       predictors_lup = predictors_lup)
   saveRDS(descv_tbl_ls,paste0(descv_outp_dir_1L_chr,"/descv_tbls_ls.RDS"))
   return(descv_tbl_ls)
+}
+# From scorz
+manufacture_ScorzProfile <- function(x,
+                                     custom_args_ls = NULL,
+                                     custom_fn = NULL,#identity,
+                                     domain_pfxs_1L_chr = character(0),
+                                     what_1L_chr = "domains",
+                                     ...){
+  object_xx <- NULL
+  if(what_1L_chr == "domains"){
+    if(is.null(custom_fn)){
+      if(!identical(domain_pfxs_1L_chr, character(0))){
+        object_xx <- purrr::map_chr(names(dplyr::select(x@a_YouthvarsProfile@a_Ready4useDyad@ds_tb, dplyr::starts_with(domain_pfxs_1L_chr))),
+                                    ~ {
+                                      domain_1L_chr <- eval(parse(text=paste0("attributes(x@a_YouthvarsProfile@a_Ready4useDyad@ds_tb$",.x,")$label")))
+                                      domain_1L_chr <- ifelse(!stringr::str_detect(domain_1L_chr," - "),
+                                                              domain_1L_chr,
+                                                              stringr::str_sub(domain_1L_chr,
+                                                                               start = stringi::stri_locate_last_fixed(domain_1L_chr," - ")[1,1] %>%
+                                                                                 unname() + 2))
+                                      domain_1L_chr
+                                    })
+        
+        
+      }
+    }else{
+      object_xx <-  rlang::exec(custom_fn, !!!custom_args_ls)
+    }
+  }
+  return(object_xx)
+}
+manufacture_ScorzAqol6 <- function(x,
+                                   what_1L_chr = "domains",
+                                   ...){
+  object_xx <- NULL
+  if(what_1L_chr == "domains"){
+    object_xx <- c("Independent Living", "Relationships", "Mental Health", "Coping", "Pain", "Senses")
+  }else{
+    object_xx <- methods::callNextMethod()
+  }
+  return(object_xx)
+}
+manufacture_ScorzEuroQol5 <- function(x,
+                                      what_1L_chr = "domains",
+                                      ...){
+  object_xx <- NULL
+  if(what_1L_chr == "domains"){
+    object_xx <- x@itm_labels_chr
+  }else{
+    object_xx <- methods::callNextMethod()
+  }
+  return(object_xx)
+}
+renew_ScorzAqol6Adol <- function(x, # DO NOT EXPORT TO SCORZ LIBRARY
+                                 label_ds_1L_lgl = T,
+                                 type_1L_chr = "score"){
+  y <- x@a_YouthvarsProfile@a_Ready4useDyad
+  y <- renew(y, type_1L_chr = "unlabel")
+  if(type_1L_chr == "score"){
+    if(identical(x@scrg_dss_ls,list(list()))){
+      x@scrg_dss_ls <- get_aqol6d_scrg_dss()
+    }
+    select_chr <- setdiff(names(y@ds_tb),
+                          x@instrument_dict_r3$var_nm_chr[!x@instrument_dict_r3$var_nm_chr %>%
+                                                            startsWith(x@itm_prefix_1L_chr)] %>%
+                            as.vector())
+    y@ds_tb <- y@ds_tb %>%
+      dplyr::select(tidyselect::all_of(select_chr))
+    y@ds_tb <- add_adol6d_scores(y@ds_tb, # Make an enhanceSlot method - then generalise renew mthd to parent class
+                                 aqol6d_scrg_dss_ls = x@scrg_dss_ls,
+                                 prefix_1L_chr =  x@itm_prefix_1L_chr,
+                                 id_var_nm_1L_chr = x@a_YouthvarsProfile@id_var_nm_1L_chr,
+                                 total_aqol_var_nm_1L_chr = x@total_unwtd_var_nm_1L_chr,
+                                 wtd_aqol_var_nm_1L_chr = x@total_wtd_var_nm_1L_chr)
+    y@dictionary_r3 <- ready4::renew(y@dictionary_r3,
+                                     new_cases_r3 = x@instrument_dict_r3)
+  }
+  if(label_ds_1L_lgl)
+    y <- renew_Ready4useDyad(y) # change to renew
+  if(type_1L_chr == "score"){
+    x@a_YouthvarsProfile@a_Ready4useDyad <- y
+  }
+  return(x)
+}
+renew_ScorzProfile <- function(x,
+                               drop_msng_1L_lgl = F,
+                               item_type_1L_chr = "numeric",
+                               scoring_fn = identity,
+                               scorz_args_ls = NULL,
+                               label_ds_1L_lgl = T,
+                               type_1L_chr = "score"){
+  
+  if(type_1L_chr %in% c("score","score-c","score-w")){
+    if(type_1L_chr == "score"){
+      x <-  renew_ScorzProfile(x,# Change to renew
+                               scoring_fn = scoring_fn,
+                               scorz_args_ls = scorz_args_ls,
+                               label_ds_1L_lgl = label_ds_1L_lgl,
+                               type_1L_chr = "score-w") %>% 
+        renew_ScorzProfile(label_ds_1L_lgl = label_ds_1L_lgl,# Change to renew
+                           type_1L_chr = "score-c") 
+    }
+    if(type_1L_chr %in% c("score-c","score-w")){
+      y <- x@a_YouthvarsProfile@a_Ready4useDyad
+      y <- renew(y, type_1L_chr = "unlabel")
+    }
+    if(type_1L_chr == "score-c"){
+      y@ds_tb <- y@ds_tb %>%
+        dplyr::mutate(`:=`(!!rlang::sym(x@total_unwtd_var_nm_1L_chr),
+                           rowSums(dplyr::select(.,dplyr::starts_with(x@itm_prefix_1L_chr)))))
+      if(drop_msng_1L_lgl)
+        y@ds_tb <- y@ds_tb  %>%
+          dplyr::filter(!is.na(!!rlang::sym(x@total_unwtd_var_nm_1L_chr)))
+      if(!x@total_unwtd_var_nm_1L_chr %in% x@instrument_dict_r3$var_nm_chr){
+        x@instrument_dict_r3 <- ready4use::renew.ready4use_dictionary(x@instrument_dict_r3,
+                                                                      var_nm_chr = x@total_unwtd_var_nm_1L_chr,
+                                                                      var_ctg_chr = "multi-attribute utility instrument unweighted total score",
+                                                                      var_desc_chr = paste0(x@instrument_nm_1L_chr, " (unweighted total)"),
+                                                                      var_type_chr = item_type_1L_chr)
+      }
+    }
+    if(type_1L_chr == "score-w"){
+      y@ds_tb <- rlang::exec(scoring_fn, y@ds_tb, !!!scorz_args_ls)
+      if(!x@total_wtd_var_nm_1L_chr %in% x@instrument_dict_r3$var_nm_chr){
+        x@instrument_dict_r3 <- ready4use::renew.ready4use_dictionary(x@instrument_dict_r3,
+                                                                      var_nm_chr = x@total_wtd_var_nm_1L_chr,
+                                                                      var_ctg_chr = "health utility",
+                                                                      var_desc_chr = paste0(x@instrument_nm_1L_chr, " total score"),
+                                                                      var_type_chr = item_type_1L_chr)
+      }
+    }
+  }
+  if(type_1L_chr %in% c("score-c","score-w")){
+    y@dictionary_r3 <- ready4use::renew.ready4use_dictionary(y@dictionary_r3,
+                                                             new_cases_r3 = x@instrument_dict_r3)
+    if(label_ds_1L_lgl)
+      y <- renew_Ready4useDyad(y) # change to renew
+    x@a_YouthvarsProfile@a_Ready4useDyad <- y
+  }
+  return(x)
 }
 # From specific
 authorData_SpecificMixed <- function(x,
@@ -1010,16 +1247,17 @@ get_signft_covars <- function (mdls_with_covars_smry_tb, covar_var_nms_chr, what
                                                                                       purrr::flatten_chr()) ==.x)==length(signt_covars_chr))]
     }
     if(!is.null(X_Ready4useDyad)){
-      factor_vars_chr <- X_Ready4useDyad@dictionary_r3 %>% 
-        ready4use::renew.ready4use_dictionary(filter_cdn_1L_chr = "var_nm_chr %in% covar_var_nms_chr & var_type_chr == 'factor'") %>% 
-        dplyr::pull(var_nm_chr) %>% as.character()
-      dummys_ls <- purrr::map(factor_vars_chr,
-                              ~ paste0(.x,eval(parse(text=paste0("levels(X_Ready4useDyad@ds_tb$",.x,")")))))
-      
+      # factor_vars_chr <- X_Ready4useDyad@dictionary_r3 %>% 
+      #   ready4use::renew.ready4use_dictionary(filter_cdn_1L_chr = "var_nm_chr %in% covar_var_nms_chr & var_type_chr == 'factor'") %>% ### Replace
+      #   dplyr::pull(var_nm_chr) %>% as.character()
+      # dummys_ls <- purrr::map(factor_vars_chr,
+      #                         ~ paste0(.x,eval(parse(text=paste0("levels(X_Ready4useDyad@ds_tb$",.x,")"))))) %>%
+      #   stats::setNames(factor_vars_chr)
+      dummys_chr <- manufacture_Ready4useDyad(X_Ready4useDyad, flatten_1L_lgl = T, type_1L_chr = "dummys", what_1L_chr = "factors") # More editing needed
       signt_dumys_ls <- mdls_with_covars_smry_tb$Significant %>%
         purrr::map(~{
           terms_1L_chr <- .x
-          dummys_chr <- dummys_ls %>% purrr::flatten_chr()
+          #dummys_chr <- dummys_ls %>% purrr::flatten_chr()
           dummys_chr[dummys_chr %>%
             purrr::map_lgl(~stringr::str_detect(terms_1L_chr,.x))]
         })
@@ -1027,10 +1265,14 @@ get_signft_covars <- function (mdls_with_covars_smry_tb, covar_var_nms_chr, what
       if(what_1L_chr == "all" && !identical(signt_dumys_chr, character(0))){
         signt_dumys_chr  <- signt_dumys_chr[signt_dumys_chr %>% purrr::map_lgl(~sum((signt_dumys_ls %>% purrr::flatten_chr())==.x)==length(signt_dumys_chr))]
       }
-      signt_covars_chr <- c(signt_covars_chr, signt_dumys_chr) %>% sort()
+      signt_fctrs_chr <- signt_dumys_chr  %>% 
+        purrr::map_chr(~manufacture_Ready4useDyad(X_Ready4useDyad, flatten_1L_lgl = T, type_1L_chr = "dummys", what_1L_chr = "factors-d", match_1L_chr = .x)) %>% # update when exported
+        unique()
+      signt_covars_chr <- c(signt_covars_chr, signt_fctrs_chr) %>% sort()
       }
-  if(identical(signt_covars_chr, character(0)))
-    signt_covars_chr <- NA_character_
+    if(identical(signt_covars_chr, character(0))){
+      signt_covars_chr <- NA_character_
+    }
   return(signt_covars_chr)
 }
 get_mdls_with_signft_covars <- function(outp_smry_ls, 
@@ -1052,6 +1294,60 @@ get_mdls_with_signft_covars <- function(outp_smry_ls,
     }) %>%
     stats::setNames(signft_covars_chr)
   return(mdls_with_signft_covars_ls)
+}
+investigate_SpecificMixed <- function(x,
+                                      backend_1L_chr = "cmdstanr",
+                                      new_dir_nm_1L_chr = "F_TS_Mdls",
+                                      scndry_anlys_params_ls = NULL){
+  if(identical(x@b_SpecificParameters@prior_ls,list(list()))){
+    prior_ls <- NULL
+  }else{
+    prior_ls <- x@b_SpecificParameters@prior_ls
+  }
+  if(identical(x@b_SpecificParameters@control_ls,list(list()))){
+    control_ls <- NULL
+  }else{
+    control_ls <- x@b_SpecificParameters@control_ls
+  }
+  if(is.null(scndry_anlys_params_ls)){
+    results_ls <- write_ts_mdls_from_alg_outp(outp_smry_ls = append(x@c_SpecificResults@b_SpecificPrivate@private_outp_ls,
+                                                                    x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls),
+                                              predictors_lup = x@b_SpecificParameters@predictors_lup,
+                                              utl_min_val_1L_dbl = x@b_SpecificParameters@depnt_var_min_max_dbl[1],# Change
+                                              backend_1L_chr = backend_1L_chr,
+                                              new_dir_nm_1L_chr = new_dir_nm_1L_chr, # Method Arg
+                                              iters_1L_int = x@b_SpecificParameters@iters_1L_int,
+                                              path_to_write_to_1L_chr = x@b_SpecificParameters@paths_ls$output_data_dir_1L_chr,#x@a_Ready4showPaths@outp_data_dir_1L_chr,
+                                              prior_ls = prior_ls,
+                                              control_ls = control_ls)
+    rename_lup <- x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$rename_lup
+    session_ls <- x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$session_ls
+    x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls <- append(results_ls[-1],
+                                                                        list(rename_lup = rename_lup,
+                                                                             session_ls = session_ls)) # EDIT TO REMOVE INPUTS
+    x@c_SpecificResults@b_SpecificPrivate@private_outp_ls <- results_ls[1]
+  }else{
+    input_params_ls <- manufacture_SpecificProject(x, # change to manufacture
+                                                   what_1L_chr = "input_params_ls")
+    input_params_ls$rename_lup <- x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$rename_lup
+    input_params_ls$scndry_anlys_params_ls <- scndry_anlys_params_ls
+    input_params_ls$path_params_ls$paths_ls <- list(write_to_dir_nm_1L_chr = x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$path_to_write_to_1L_chr %>%
+                                                      stringr::str_sub(end=-8))
+    # changed from x@paths_chr
+    input_params_ls$outp_smry_ls <- append(x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls,
+                                           x@c_SpecificResults@b_SpecificPrivate@private_outp_ls)
+    input_params_ls$params_ls$control_ls <- control_ls
+    input_params_ls$params_ls$prior_ls <- prior_ls
+    input_params_ls$params_ls$iters_1L_int <- x@b_SpecificParameters@iters_1L_int
+    results_ls_ls <- write_secondary_analyses(input_params_ls,
+                                              backend_1L_chr = backend_1L_chr,
+                                              new_dir_nm_1L_chr = new_dir_nm_1L_chr) %>%
+      stats::setNames(names(scndry_anlys_params_ls))
+    x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls <- append(x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls,
+                                                                        results_ls_ls %>%
+                                                                          purrr::map(~.x[-1]))
+  }
+  return(x)
 }
 investigate_SpecificModels <- function(x,
                                        depnt_var_max_val_1L_dbl = Inf,
@@ -1079,7 +1375,31 @@ investigate_SpecificModels <- function(x,
                                              dissemination_1L_chr = x@dissemination_1L_chr)
   return(x_SpecificPredictors)
 }
-make_abstract_args_ls <- function(results_ls, # Generalise from TTU
+investigate_SpecificPredictors <- function(x,
+                                           depnt_var_min_val_1L_dbl = numeric(0),
+                                           signft_covars_cndn_1L_chr = "any"){
+  results_ls <- write_predr_and_covars_cmprsn(scored_data_tb = x@a_YouthvarsProfile@a_Ready4useDyad@ds_tb,
+                                              bl_tb = x@c_SpecificResults@b_SpecificPrivate@private_outp_ls$bl_tb,
+                                              depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
+                                              ds_smry_ls = x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$ds_smry_ls,
+                                              mdl_smry_ls = x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$mdl_smry_ls,
+                                              output_data_dir_1L_chr = x@b_SpecificParameters@paths_ls$output_data_dir_1L_chr,
+                                              seed_1L_int = x@b_SpecificParameters@seed_1L_int,
+                                              signft_covars_cndn_1L_chr = signft_covars_cndn_1L_chr)
+  rename_lup <- x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$rename_lup
+  session_ls <- x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$session_ls
+  x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls <- append(results_ls[-1],
+                                                                      list(rename_lup = rename_lup,
+                                                                           session_ls = session_ls))
+  x@c_SpecificResults@b_SpecificPrivate@private_outp_ls <- results_ls[1]
+  x_SpecificFixed <- SpecificFixed(a_YouthvarsProfile = x@a_YouthvarsProfile,
+                                   b_SpecificParameters = x@b_SpecificParameters,
+                                   c_SpecificResults = x@c_SpecificResults,
+                                   paths_chr = x@paths_chr,
+                                   dissemination_1L_chr = x@dissemination_1L_chr)
+  return(x_SpecificFixed)
+}
+make_abstract_args_ls <- function(results_ls, # Rename - duplicate name from ready4show
                                   fl_nm_1L_chr = "abstract.txt"){
   mdl_cmprsns_ls <- get_mdl_cmprsns(results_ls, as_list_1L_lgl = T)
   abstract_args_ls <- list(abstract_ls = list(Background = get_background_text(results_ls),
@@ -1253,6 +1573,27 @@ make_cmpst_sctr_and_dnst_plt <- function(outp_smry_ls,
                                       label_y = label_y_1L_dbl,
                                       label_size = label_size_1L_dbl)
   return(composite_plt)
+}
+make_csnl_example_predrs <- function(){ # New to specific
+  predictors_r3 <- Ready4useRepos(dv_nm_1L_chr = "TTU", 
+                                  dv_ds_nm_1L_chr = "https://doi.org/10.7910/DVN/DKDIB0", 
+                                  dv_server_1L_chr = "dataverse.harvard.edu") %>%
+    ingest(fls_to_ingest_chr = c("predictors_r3"),
+           metadata_1L_lgl = F)
+  predictors_r3 <- renew.specific_predictors(predictors_r3,
+                                             filter_cdn_1L_chr = "short_name_chr == 'SOFAS'") %>%
+    renew.specific_predictors(short_name_chr = c("K10", "MLT", "CHU9D", "AQOL6D"),
+                              long_name_chr = c("K10 total score", "MLT total score", "CHU9D health utility", "AQOL6D health utility"),
+                              min_val_dbl = c(10,0,-0.1059,0.03),
+                              max_val_dbl = c(50,100,1,1),
+                              class_chr = c("integer","numeric","numeric","numeric"),
+                              increment_dbl = 1,
+                              class_fn_chr = c("as.integer","as.double","as.double","youthvars::youthvars_aqol6d_adol"), # update when new youthvars classes are created
+                              mdl_scaling_dbl = c(0.01,0.01,1,1),
+                              covariate_lgl = F) %>%
+    dplyr::mutate(covariate_lgl = dplyr::case_when(short_name_chr == "SOFAS" ~ F,
+                                                   T ~ covariate_lgl))
+  return(predictors_r3)
 }
 make_fake_ts_data <- function (outp_smry_ls, # rename lngl
                                depnt_vars_are_NA_1L_lgl = T)
@@ -1502,6 +1843,124 @@ write_mdl_plts <- function (data_tb, model_mdl, mdl_fl_nm_1L_chr = "OLS_NTF",
                                                                                                                                                                              paste("_", paste0(covar_var_nms_chr[1:min(length(covar_var_nms_chr),
                                                                                                                                                                                                                        3)], collapse = "")), ""), ..3), height_1L_dbl = ..4[1],
                                                                                                                              width_1L_dbl = ..4[2]))
+}
+make_plot_fn_and_args_ls <- function(type_1L_chr,
+                                     depnt_var_desc_1L_chr,
+                                     args_ls = NULL,
+                                     base_size_1L_dbl = 11,
+                                     brms_mdl = NULL,
+                                     correspondences_lup = NULL,
+                                     depnt_var_nm_1L_chr = NULL,
+                                     new_var_nm_1L_chr = NA_character_,
+                                     predn_type_1L_chr = NULL,
+                                     round_var_nm_1L_chr = NULL,
+                                     sd_dbl = NA_real_,
+                                     seed_1L_dbl = 23456,
+                                     sfx_1L_chr = " from table",
+                                     table_predn_mdl = NULL,
+                                     tfmn_1L_chr = "NTF",
+                                     tfd_data_tb = NULL,
+                                     utl_min_val_1L_dbl = -1,
+                                     x_lbl_1L_chr = NA_character_,
+                                     y_lbl_1L_chr = NA_character_){
+  if(!is.null(brms_mdl)){
+    set.seed(seed_1L_dbl)
+    tfd_data_tb <- transform_ds_for_all_cmprsn_plts(tfd_data_tb = tfd_data_tb,
+                                                    model_mdl = brms_mdl,
+                                                    depnt_var_nm_1L_chr = depnt_var_nm_1L_chr,
+                                                    is_brms_mdl_1L_lgl = inherits(brms_mdl,"brmsfit"),
+                                                    predn_type_1L_chr = predn_type_1L_chr,
+                                                    sd_dbl = NA_real_,
+                                                    sfx_1L_chr = ifelse(is.null(table_predn_mdl),
+                                                                        " from brmsfit",
+                                                                        sfx_1L_chr),
+                                                    tfmn_1L_chr = tfmn_1L_chr,
+                                                    utl_min_val_1L_dbl = utl_min_val_1L_dbl)
+    if(!is.null(table_predn_mdl)){
+      tfd_data_tb <- transform_ds_for_all_cmprsn_plts(tfd_data_tb = tfd_data_tb,
+                                                      model_mdl = table_predn_mdl,
+                                                      depnt_var_nm_1L_chr = depnt_var_nm_1L_chr,
+                                                      is_brms_mdl_1L_lgl = F,
+                                                      predn_type_1L_chr = predn_type_1L_chr,
+                                                      sd_dbl = sd_dbl,
+                                                      sfx_1L_chr = ifelse(!is.null(brms_mdl),
+                                                                          " from table",
+                                                                          sfx_1L_chr),
+                                                      tfmn_1L_chr = tfmn_1L_chr,
+                                                      utl_min_val_1L_dbl = utl_min_val_1L_dbl)
+    }
+  }
+  ref_idx_1L_int <- which(type_1L_chr == c("coefs", "hetg",
+                                           "dnst", "sctr_plt",
+                                           "sim_dnst", "sim_sctr",
+                                           "cnstrd_dnst", "cnstrd_sctr_plt",
+                                           "cnstrd_sim_dnst", "cnstrd_sim_sctr"))
+  
+  if (ref_idx_1L_int %in% c(3,5,7,9)) {
+    plt_fn <- plot_obsd_predd_dnst
+    fn_args_ls <- list(tfd_data_tb = tfd_data_tb,
+                       base_size_1L_dbl = base_size_1L_dbl,
+                       depnt_var_nm_1L_chr = depnt_var_nm_1L_chr,
+                       depnt_var_desc_1L_chr = depnt_var_desc_1L_chr,
+                       new_var_nm_1L_chr = new_var_nm_1L_chr,
+                       predd_val_var_nm_1L_chr = ifelse(ref_idx_1L_int %in% c(3,7),
+                                                        transform_predd_var_nm("Predicted",
+                                                                               sfx_1L_chr = ifelse(!is.null(table_predn_mdl),
+                                                                                                   " from brmsfit",
+                                                                                                   sfx_1L_chr),
+                                                                               utl_min_val_1L_dbl = ifelse(ref_idx_1L_int == 3, ####
+                                                                                                           NA_real_,
+                                                                                                           utl_min_val_1L_dbl)),
+                                                        transform_predd_var_nm("Simulated",
+                                                                               sfx_1L_chr = ifelse(!is.null(table_predn_mdl),
+                                                                                                   " from brmsfit",
+                                                                                                   sfx_1L_chr),
+                                                                               utl_min_val_1L_dbl = ifelse(ref_idx_1L_int == 5,
+                                                                                                           NA_real_,
+                                                                                                           utl_min_val_1L_dbl))),
+                       cmprsn_predd_var_nm_1L_chr = ifelse(is.null(table_predn_mdl),
+                                                           NA_character_,
+                                                           ifelse(ref_idx_1L_int %in% c(3,7), ##
+                                                                  transform_predd_var_nm("Predicted",
+                                                                                         sfx_1L_chr = " from table",
+                                                                                         utl_min_val_1L_dbl = ifelse(ref_idx_1L_int == 3, ##
+                                                                                                                     NA_real_,
+                                                                                                                     utl_min_val_1L_dbl)),
+                                                                  transform_predd_var_nm("Simulated",
+                                                                                         sfx_1L_chr =" from table",
+                                                                                         utl_min_val_1L_dbl = ifelse(ref_idx_1L_int == 5, ##
+                                                                                                                     NA_real_,
+                                                                                                                     utl_min_val_1L_dbl)))))
+  }else{
+    plt_fn <- plot_obsd_predd_sctr_cmprsn
+    fn_args_ls <- list(tfd_data_tb = tfd_data_tb,
+                       base_size_1L_dbl = base_size_1L_dbl,
+                       correspondences_lup = correspondences_lup,
+                       depnt_var_nm_1L_chr = depnt_var_nm_1L_chr,
+                       depnt_var_desc_1L_chr = depnt_var_desc_1L_chr,
+                       round_var_nm_1L_chr = round_var_nm_1L_chr,
+                       predd_val_var_nm_1L_chr = ifelse(ref_idx_1L_int %in% c(4,8),
+                                                        transform_predd_var_nm("Predicted",
+                                                                               sfx_1L_chr = ifelse(!is.null(table_predn_mdl),
+                                                                                                   " from brmsfit",
+                                                                                                   sfx_1L_chr),
+                                                                               utl_min_val_1L_dbl = ifelse(ref_idx_1L_int == 4,
+                                                                                                           NA_real_,
+                                                                                                           utl_min_val_1L_dbl)),
+                                                        transform_predd_var_nm("Simulated",
+                                                                               sfx_1L_chr = ifelse(!is.null(table_predn_mdl),
+                                                                                                   " from brmsfit",
+                                                                                                   sfx_1L_chr),
+                                                                               utl_min_val_1L_dbl = ifelse(ref_idx_1L_int == 6,
+                                                                                                           NA_real_,
+                                                                                                           utl_min_val_1L_dbl))),
+                       args_ls = args_ls,
+                       x_lbl_1L_chr = x_lbl_1L_chr,
+                       y_lbl_1L_chr = y_lbl_1L_chr)
+  }
+  plot_fn_and_args_ls <- list(plt_fn = plt_fn,
+                              fn_args_ls = fn_args_ls)
+  return(plot_fn_and_args_ls)
 }
 make_results_ls <- function(spine_of_results_ls = NULL, # CORE OF S4 Classes - rename ts to lngl # and metamorphose methods
                             abstract_args_ls = NULL,
@@ -2293,6 +2752,42 @@ transform_tb_to_mdl_inp <- function (data_tb,
     transform_uid_var(id_var_nm_1L_chr = id_var_nm_1L_chr)
   return(tfd_for_mdl_inp_tb)
 }
+transform_tbls_for_csnl_mdls <- function(results_ls){
+  if(is.na(results_ls$cohort_ls$n_fup_1L_dbl)){
+    results_ls$tables_ls <- results_ls$tables_ls %>% 
+      purrr::map(~{
+        column_nm_1L_chr <- names(.x)[1]
+        .x %>%
+          dplyr::mutate(!!rlang::sym(column_nm_1L_chr) := !!rlang::sym(column_nm_1L_chr) %>%
+                          purrr::map_chr(~ifelse(endsWith(.x, " baseline"), stringi::stri_replace_last_fixed(.x, " baseline","") ,.x)))
+      })
+  }
+  return(results_ls)
+}
+transform_tbls_for_covar_nms <- function(results_ls){
+  results_ls$tables_ls <- results_ls$tables_ls %>% 
+    purrr::map(~{
+      column_nm_1L_chr <- names(.x)[1]
+      predr_vars_nms_chr <- get_predrs_by_ctg(results_ls,collapse_1L_lgl = T) %>% purrr::flatten_chr()
+      .x %>%
+        dplyr::mutate(!!rlang::sym(column_nm_1L_chr) := !!rlang::sym(column_nm_1L_chr) %>%
+                        purrr::map_chr(~
+                                         {
+                                           var_nm_1L_chr <- .x
+                                           purrr::reduce(c(" baseline"," change"),
+                                                         .init = var_nm_1L_chr,
+                                                         ~ ifelse(endsWith(.x, .y) &&  !(stringi::stri_replace_last_fixed(.x, .y,"") %in% predr_vars_nms_chr),
+                                                                  ready4::get_from_lup_obj(results_ls$mdl_ingredients_ls$dictionary_tb,
+                                                                                           match_value_xx = stringi::stri_replace_last_fixed(.x, .y,""),
+                                                                                           match_var_nm_1L_chr = "var_nm_chr",
+                                                                                           target_var_nm_1L_chr = "var_desc_chr") %>%
+                                                                    Hmisc::capitalize(),
+                                                                  .x))
+                                         }
+                        ))
+    })
+  return(results_ls)
+}
 write_mdl_cmprsn <- function(scored_data_tb,
                              ds_smry_ls,
                              mdl_smry_ls,
@@ -2334,551 +2829,6 @@ write_mdl_cmprsn <- function(scored_data_tb,
                         ds_smry_ls = ds_smry_ls,
                         mdl_smry_ls = mdl_smry_ls)
   return(mdl_cmprsn_ls)
-}
-write_shareable_mdls <- function (outp_smry_ls,
-                                  new_dir_nm_1L_chr = "G_Shareable",
-                                  shareable_title_detail_1L_chr = "",
-                                  write_mdls_to_dv_1L_lgl = F)
-{
-  output_dir_chr <- write_shareable_dir(outp_smry_ls = outp_smry_ls,
-                                        new_dir_nm_1L_chr = new_dir_nm_1L_chr)
-  incld_mdl_paths_chr <- make_incld_mdl_paths(outp_smry_ls)
-  fake_ds_tb <- make_fake_ts_data(outp_smry_ls, depnt_vars_are_NA_1L_lgl = F)
-  mdl_types_lup <- outp_smry_ls$mdl_types_lup
-  shareable_mdls_ls <- outp_smry_ls$mdl_nms_ls %>% purrr::flatten_chr() %>%
-    purrr::map2(incld_mdl_paths_chr, ~{
-      model_mdl <- readRDS(paste0(outp_smry_ls$path_to_write_to_1L_chr,"/",.y))
-      
-      mdl_smry_tb <- outp_smry_ls$mdls_smry_tb %>% dplyr::filter(Model ==
-                                                                   .x)
-      mdl_nm_1L_chr <- .x
-      mdl_type_1L_chr <- get_mdl_type_from_nm(mdl_nm_1L_chr,
-                                              mdl_types_lup = mdl_types_lup)
-      tfmn_1L_chr <- ready4::get_from_lup_obj(mdl_types_lup,
-                                              match_value_xx = mdl_type_1L_chr,
-                                              match_var_nm_1L_chr = "short_name_chr",
-                                              target_var_nm_1L_chr = "tfmn_chr",
-                                              evaluate_1L_lgl = F)
-      predn_type_1L_chr <- ready4::get_from_lup_obj(mdl_types_lup,
-                                                    match_value_xx = mdl_type_1L_chr,
-                                                    match_var_nm_1L_chr = "short_name_chr",
-                                                    target_var_nm_1L_chr = "predn_type_chr",
-                                                    evaluate_1L_lgl = F)
-      if (is.na(predn_type_1L_chr))
-        predn_type_1L_chr <- NULL
-      control_1L_chr <- ready4::get_from_lup_obj(mdl_types_lup,
-                                                 match_value_xx = mdl_type_1L_chr,
-                                                 match_var_nm_1L_chr = "short_name_chr",
-                                                 target_var_nm_1L_chr = "control_chr",
-                                                 evaluate_1L_lgl = F)
-      sd_dbl <- mdl_smry_tb %>%
-        dplyr::filter(Parameter == "SD (Intercept)") %>%
-        dplyr::select(Estimate, SE) %>%
-        t() %>%
-        as.vector()
-      mdl_fake_ds_tb <- fake_ds_tb %>%
-        add_tfd_var_to_ds(depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr,
-                          tfmn_1L_chr = tfmn_1L_chr,
-                          depnt_var_max_val_1L_dbl = 0.999) %>%
-        dplyr::select(names(model_mdl$data))
-      model_mdl$data <- mdl_fake_ds_tb
-      table_predn_mdl <- make_shareable_mdl(fake_ds_tb = mdl_fake_ds_tb,
-                                            mdl_smry_tb = mdl_smry_tb, depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr,
-                                            id_var_nm_1L_chr = outp_smry_ls$id_var_nm_1L_chr,
-                                            tfmn_1L_chr = tfmn_1L_chr,
-                                            mdl_type_1L_chr = mdl_type_1L_chr,
-                                            mdl_types_lup = mdl_types_lup,
-                                            control_1L_chr = control_1L_chr,
-                                            start_1L_chr = NA_character_,
-                                            seed_1L_int = outp_smry_ls$seed_1L_int)
-      saveRDS(table_predn_mdl, paste0(output_dir_chr[4], "/", .x,
-                                      ".RDS"))
-      saveRDS(model_mdl, paste0(output_dir_chr[3], "/", .x,
-                                ".RDS"))
-      scaling_fctr_dbl <- make_scaling_fctr_dbl(outp_smry_ls)
-      write_ts_mdl_plts(brms_mdl = model_mdl,
-                        table_predn_mdl = table_predn_mdl,
-                        tfd_data_tb = outp_smry_ls$scored_data_tb %>%
-                          transform_tb_to_mdl_inp(depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr,
-                                                  predr_vars_nms_chr = outp_smry_ls$predr_vars_nms_ls %>% purrr::flatten_chr() %>% unique(),
-                                                  id_var_nm_1L_chr = outp_smry_ls$id_var_nm_1L_chr,
-                                                  round_var_nm_1L_chr = outp_smry_ls$round_var_nm_1L_chr,
-                                                  round_bl_val_1L_chr = outp_smry_ls$round_bl_val_1L_chr,
-                                                  scaling_fctr_dbl = scaling_fctr_dbl),
-                        depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr,
-                        mdl_nm_1L_chr = mdl_nm_1L_chr,
-                        path_to_write_to_1L_chr = output_dir_chr[3],
-                        predn_type_1L_chr = predn_type_1L_chr,
-                        round_var_nm_1L_chr = outp_smry_ls$round_var_nm_1L_chr,
-                        sd_dbl = sd_dbl,
-                        sfx_1L_chr = " from table",
-                        tfmn_1L_chr = tfmn_1L_chr,
-                        utl_min_val_1L_dbl = ifelse(!is.null(outp_smry_ls$utl_min_val_1L_dbl),
-                                                    outp_smry_ls$utl_min_val_1L_dbl,
-                                                    -1))
-      table_predn_mdl
-    }) %>% stats::setNames(outp_smry_ls$mdl_nms_ls %>% purrr::flatten_chr())
-  outp_smry_ls$shareable_mdls_ls <- shareable_mdls_ls
-  outp_smry_ls$shareable_mdls_tb <-  NULL
-  ingredients_ls <- list(depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr,
-                         dictionary_tb = outp_smry_ls$dictionary_tb %>%
-                           dplyr::filter(var_nm_chr %in% names(fake_ds_tb)),
-                         id_var_nm_1L_chr = outp_smry_ls$id_var_nm_1L_chr,
-                         fake_ds_tb = fake_ds_tb,
-                         mdls_lup = outp_smry_ls$shareable_mdls_ls %>%
-                           purrr::map2_dfr(names(outp_smry_ls$shareable_mdls_ls),
-                                           ~{
-                                             if(inherits(.x,"betareg")){
-                                               coeffs_dbl <- .x$coefficients$mean
-                                             }else{
-                                               coeffs_dbl <- .x$coefficients
-                                             }
-                                             mdl_type_1L_chr = get_mdl_type_from_nm(.y,
-                                                                                    mdl_types_lup = outp_smry_ls$mdl_types_lup)
-                                             tibble::tibble(mdl_nms_chr = .y) %>%
-                                               dplyr::mutate(predrs_ls = list(coeffs_dbl %>%
-                                                                                names() %>%
-                                                                                stringr::str_remove_all("_change") %>%
-                                                                                stringr::str_remove_all("_baseline") %>%
-                                                                                unique() %>%
-                                                                                purrr::discard(~ .x== "(Intercept)")),
-                                                             mdl_type_chr = mdl_type_1L_chr,
-                                                             tfmn_chr = ready4::get_from_lup_obj(outp_smry_ls$mdl_types_lup,
-                                                                                                 match_value_xx = mdl_type_1L_chr,
-                                                                                                 match_var_nm_1L_chr = "short_name_chr",
-                                                                                                 target_var_nm_1L_chr = "tfmn_chr",
-                                                                                                 evaluate_1L_lgl = F))
-                                           }), #
-                         mdls_smry_tb = outp_smry_ls$mdls_smry_tb,#
-                         mdl_types_lup = mdl_types_lup,
-                         predictors_lup = outp_smry_ls$predictors_lup,#
-                         round_var_nm_1L_chr = outp_smry_ls$round_var_nm_1L_chr,
-                         seed_1L_int = outp_smry_ls$seed_1L_int,
-                         utl_min_val_1L_dbl = ifelse(!is.null(outp_smry_ls$utl_min_val_1L_dbl),
-                                                     outp_smry_ls$utl_min_val_1L_dbl,
-                                                     -1))
-  saveRDS(ingredients_ls, paste0(output_dir_chr[2], "/mdl_ingredients",
-                                 ".RDS"))
-  outp_smry_ls <- write_mdls_to_dv(outp_smry_ls,
-                                   new_dir_nm_1L_chr = new_dir_nm_1L_chr,
-                                   shareable_title_detail_1L_chr = shareable_title_detail_1L_chr,
-                                   output_dir_chr = output_dir_chr)
-  return(outp_smry_ls)
-}
-write_sngl_predr_multi_mdls_outps <- function (data_tb, mdl_types_chr, predr_var_nm_1L_chr, predr_var_desc_1L_chr,
-                                               predr_vals_dbl, path_to_write_to_1L_chr, new_dir_nm_1L_chr =  "A_Candidate_Mdls_Cmprsn", start_1L_chr = NULL,
-                                               covar_var_nms_chr = NA_character_,
-                                               depnt_var_min_val_1L_dbl = numeric(0), # NEW
-                                               depnt_var_nm_1L_chr = "utl_total_w", # Remove default
-                                               folds_1L_int = 10, mdl_types_lup = NULL, fl_nm_pfx_1L_chr = "A_RT_",
-                                               plt_indcs_int = NA_integer_, dictionary_tb)
-{
-  if (is.null(mdl_types_lup))
-    utils::data("mdl_types_lup", envir = environment())
-  data_tb <- transform_ds_for_mdlng(data_tb, depnt_var_nm_1L_chr = depnt_var_nm_1L_chr,
-                                    depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl, 
-                                    predr_var_nm_1L_chr = predr_var_nm_1L_chr, covar_var_nms_chr = covar_var_nms_chr)
-  output_dir_1L_chr <- write_new_outp_dir(path_to_write_to_1L_chr,
-                                          new_dir_nm_1L_chr = new_dir_nm_1L_chr)
-  ready4show::write_mdl_plt_fl(plt_fn = make_tfmn_cmprsn_plt,
-                               fn_args_ls = list(data_tb = data_tb,
-                                                 depnt_var_nm_1L_chr = depnt_var_nm_1L_chr,
-                                                 dictionary_tb = dictionary_tb),
-                               path_to_write_to_1L_chr = output_dir_1L_chr,
-                               plt_nm_1L_chr = "A_TFMN_CMPRSN_DNSTY",
-                               height_1L_dbl = 6,
-                               width_1L_dbl = 10)
-  smry_of_sngl_predr_mdls_tb <- purrr::map_dfr(mdl_types_chr,
-                                               ~{
-                                                 tfmn_1L_chr <- ready4::get_from_lup_obj(mdl_types_lup,
-                                                                                         match_var_nm_1L_chr = "short_name_chr", match_value_xx = .x,
-                                                                                         target_var_nm_1L_chr = "tfmn_chr", evaluate_1L_lgl = F)
-                                                 write_mdl_type_sngl_outps(data_tb, folds_1L_int = folds_1L_int,
-                                                                           depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
-                                                                           depnt_var_nm_1L_chr = depnt_var_nm_1L_chr, start_1L_chr = start_1L_chr,
-                                                                           tfmn_1L_chr = tfmn_1L_chr, predr_var_nm_1L_chr = predr_var_nm_1L_chr,
-                                                                           predr_var_desc_1L_chr = predr_var_desc_1L_chr,
-                                                                           predr_vals_dbl = predr_vals_dbl, covar_var_nms_chr = covar_var_nms_chr,
-                                                                           mdl_type_1L_chr = .x, path_to_write_to_1L_chr = output_dir_1L_chr,
-                                                                           mdl_types_lup = mdl_types_lup, mdl_fl_nm_1L_chr = paste0(fl_nm_pfx_1L_chr,
-                                                                                                                                    predr_var_nm_1L_chr, "_", .x), plt_indcs_int = plt_indcs_int)
-                                               })
-  if (!is.null(folds_1L_int))
-    smry_of_sngl_predr_mdls_tb <- smry_of_sngl_predr_mdls_tb %>%
-    dplyr::arrange(dplyr::desc(RsquaredP))
-  return(smry_of_sngl_predr_mdls_tb)
-}
-#### FROM THIS POINT ON IS TEMPORARY AND NOT FOR EXPORT
-manufacture_ScorzProfile <- function(x,
-                                     custom_args_ls = NULL,
-                                     custom_fn = NULL,#identity,
-                                     domain_pfxs_1L_chr = character(0),
-                                     what_1L_chr = "domains",
-                                     ...){
-  object_xx <- NULL
-  if(what_1L_chr == "domains"){
-    if(is.null(custom_fn)){
-      if(!identical(domain_pfxs_1L_chr, character(0))){
-        object_xx <- purrr::map_chr(names(dplyr::select(x@a_YouthvarsProfile@a_Ready4useDyad@ds_tb, dplyr::starts_with(domain_pfxs_1L_chr))),
-                                    ~ {
-                                      domain_1L_chr <- eval(parse(text=paste0("attributes(x@a_YouthvarsProfile@a_Ready4useDyad@ds_tb$",.x,")$label")))
-                                      domain_1L_chr <- ifelse(!stringr::str_detect(domain_1L_chr," - "),
-                                                              domain_1L_chr,
-                                                              stringr::str_sub(domain_1L_chr,
-                                                                               start = stringi::stri_locate_last_fixed(domain_1L_chr," - ")[1,1] %>%
-                                                                                 unname() + 2))
-                                      domain_1L_chr
-                                    })
-        
-        
-      }
-    }else{
-      object_xx <-  rlang::exec(custom_fn, !!!custom_args_ls)
-    }
-  }
-  return(object_xx)
-}
-manufacture_ScorzAqol6 <- function(x,
-                                   what_1L_chr = "domains",
-                                   ...){
-  object_xx <- NULL
-  if(what_1L_chr == "domains"){
-    object_xx <- c("Independent Living", "Relationships", "Mental Health", "Coping", "Pain", "Senses")
-  }else{
-    object_xx <- methods::callNextMethod()
-  }
-  return(object_xx)
-}
-manufacture_ScorzEuroQol5 <- function(x,
-                                      what_1L_chr = "domains",
-                                      ...){
-  object_xx <- NULL
-  if(what_1L_chr == "domains"){
-    object_xx <- x@itm_labels_chr
-  }else{
-    object_xx <- methods::callNextMethod()
-  }
-  return(object_xx)
-}
-renew_ScorzAqol6Adol <- function(x, # DO NOT EXPORT TO SCORZ LIBRARY
-                                 label_ds_1L_lgl = T,
-                                 type_1L_chr = "score"){
-  y <- x@a_YouthvarsProfile@a_Ready4useDyad
-  y <- renew(y, type_1L_chr = "unlabel")
-  if(type_1L_chr == "score"){
-    if(identical(x@scrg_dss_ls,list(list()))){
-      x@scrg_dss_ls <- get_aqol6d_scrg_dss()
-    }
-    select_chr <- setdiff(names(y@ds_tb),
-                          x@instrument_dict_r3$var_nm_chr[!x@instrument_dict_r3$var_nm_chr %>%
-                                                            startsWith(x@itm_prefix_1L_chr)] %>%
-                            as.vector())
-    y@ds_tb <- y@ds_tb %>%
-      dplyr::select(tidyselect::all_of(select_chr))
-    y@ds_tb <- add_adol6d_scores(y@ds_tb, # Make an enhanceSlot method - then generalise renew mthd to parent class
-                                 aqol6d_scrg_dss_ls = x@scrg_dss_ls,
-                                 prefix_1L_chr =  x@itm_prefix_1L_chr,
-                                 id_var_nm_1L_chr = x@a_YouthvarsProfile@id_var_nm_1L_chr,
-                                 total_aqol_var_nm_1L_chr = x@total_unwtd_var_nm_1L_chr,
-                                 wtd_aqol_var_nm_1L_chr = x@total_wtd_var_nm_1L_chr)
-    y@dictionary_r3 <- ready4::renew(y@dictionary_r3,
-                                     new_cases_r3 = x@instrument_dict_r3)
-  }
-  if(label_ds_1L_lgl)
-    y <- renew_Ready4useDyad(y) # change to renew
-  if(type_1L_chr == "score"){
-    x@a_YouthvarsProfile@a_Ready4useDyad <- y
-  }
-  return(x)
-}
-renew_ScorzProfile <- function(x,
-                               drop_msng_1L_lgl = F,
-                               item_type_1L_chr = "numeric",
-                               scoring_fn = identity,
-                               scorz_args_ls = NULL,
-                               label_ds_1L_lgl = T,
-                               type_1L_chr = "score"){
-
-  if(type_1L_chr %in% c("score","score-c","score-w")){
-    if(type_1L_chr == "score"){
-     x <-  renew_ScorzProfile(x,# Change to renew
-                             scoring_fn = scoring_fn,
-                             scorz_args_ls = scorz_args_ls,
-                             label_ds_1L_lgl = label_ds_1L_lgl,
-                             type_1L_chr = "score-w") %>% 
-       renew_ScorzProfile(label_ds_1L_lgl = label_ds_1L_lgl,# Change to renew
-                          type_1L_chr = "score-c") 
-    }
-    if(type_1L_chr %in% c("score-c","score-w")){
-    y <- x@a_YouthvarsProfile@a_Ready4useDyad
-    y <- renew(y, type_1L_chr = "unlabel")
-    }
-    if(type_1L_chr == "score-c"){
-      y@ds_tb <- y@ds_tb %>%
-        dplyr::mutate(`:=`(!!rlang::sym(x@total_unwtd_var_nm_1L_chr),
-                           rowSums(dplyr::select(.,dplyr::starts_with(x@itm_prefix_1L_chr)))))
-      if(drop_msng_1L_lgl)
-        y@ds_tb <- y@ds_tb  %>%
-        dplyr::filter(!is.na(!!rlang::sym(x@total_unwtd_var_nm_1L_chr)))
-      if(!x@total_unwtd_var_nm_1L_chr %in% x@instrument_dict_r3$var_nm_chr){
-        x@instrument_dict_r3 <- ready4use::renew.ready4use_dictionary(x@instrument_dict_r3,
-                                                           var_nm_chr = x@total_unwtd_var_nm_1L_chr,
-                                                           var_ctg_chr = "multi-attribute utility instrument unweighted total score",
-                                                           var_desc_chr = paste0(x@instrument_nm_1L_chr, " (unweighted total)"),
-                                                           var_type_chr = item_type_1L_chr)
-      }
-    }
-    if(type_1L_chr == "score-w"){
-      y@ds_tb <- rlang::exec(scoring_fn, y@ds_tb, !!!scorz_args_ls)
-      if(!x@total_wtd_var_nm_1L_chr %in% x@instrument_dict_r3$var_nm_chr){
-        x@instrument_dict_r3 <- ready4use::renew.ready4use_dictionary(x@instrument_dict_r3,
-                                                           var_nm_chr = x@total_wtd_var_nm_1L_chr,
-                                                           var_ctg_chr = "health utility",
-                                                           var_desc_chr = paste0(x@instrument_nm_1L_chr, " total score"),
-                                                           var_type_chr = item_type_1L_chr)
-      }
-    }
-  }
-  if(type_1L_chr %in% c("score-c","score-w")){
-    y@dictionary_r3 <- ready4use::renew.ready4use_dictionary(y@dictionary_r3,
-                                                             new_cases_r3 = x@instrument_dict_r3)
-    if(label_ds_1L_lgl)
-      y <- renew_Ready4useDyad(y) # change to renew
-    x@a_YouthvarsProfile@a_Ready4useDyad <- y
-    }
-  return(x)
-}
-investigate_SpecificMixed <- function(x,
-                                      backend_1L_chr = "cmdstanr",
-                                      new_dir_nm_1L_chr = "F_TS_Mdls",
-                                      scndry_anlys_params_ls = NULL){
-  if(identical(x@b_SpecificParameters@prior_ls,list(list()))){
-    prior_ls <- NULL
-  }else{
-    prior_ls <- x@b_SpecificParameters@prior_ls
-  }
-  if(identical(x@b_SpecificParameters@control_ls,list(list()))){
-    control_ls <- NULL
-  }else{
-    control_ls <- x@b_SpecificParameters@control_ls
-  }
-  if(is.null(scndry_anlys_params_ls)){
-    results_ls <- write_ts_mdls_from_alg_outp(outp_smry_ls = append(x@c_SpecificResults@b_SpecificPrivate@private_outp_ls,
-                                                                    x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls),
-                                              predictors_lup = x@b_SpecificParameters@predictors_lup,
-                                              utl_min_val_1L_dbl = x@b_SpecificParameters@depnt_var_min_max_dbl[1],# Change
-                                              backend_1L_chr = backend_1L_chr,
-                                              new_dir_nm_1L_chr = new_dir_nm_1L_chr, # Method Arg
-                                              iters_1L_int = x@b_SpecificParameters@iters_1L_int,
-                                              path_to_write_to_1L_chr = x@b_SpecificParameters@paths_ls$output_data_dir_1L_chr,#x@a_Ready4showPaths@outp_data_dir_1L_chr,
-                                              prior_ls = prior_ls,
-                                              control_ls = control_ls)
-    rename_lup <- x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$rename_lup
-    session_ls <- x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$session_ls
-    x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls <- append(results_ls[-1],
-                                                                        list(rename_lup = rename_lup,
-                                                                             session_ls = session_ls)) # EDIT TO REMOVE INPUTS
-    x@c_SpecificResults@b_SpecificPrivate@private_outp_ls <- results_ls[1]
-  }else{
-    input_params_ls <- manufacture_SpecificProject(x, # change to manufacture
-                                   what_1L_chr = "input_params_ls")
-    input_params_ls$rename_lup <- x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$rename_lup
-    input_params_ls$scndry_anlys_params_ls <- scndry_anlys_params_ls
-    input_params_ls$path_params_ls$paths_ls <- list(write_to_dir_nm_1L_chr = x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$path_to_write_to_1L_chr %>%
-                                                      stringr::str_sub(end=-8))
-    # changed from x@paths_chr
-    input_params_ls$outp_smry_ls <- append(x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls,
-                                           x@c_SpecificResults@b_SpecificPrivate@private_outp_ls)
-    input_params_ls$params_ls$control_ls <- control_ls
-    input_params_ls$params_ls$prior_ls <- prior_ls
-    input_params_ls$params_ls$iters_1L_int <- x@b_SpecificParameters@iters_1L_int
-    results_ls_ls <- write_secondary_analyses(input_params_ls,
-                                              backend_1L_chr = backend_1L_chr,
-                                              new_dir_nm_1L_chr = new_dir_nm_1L_chr) %>%
-      stats::setNames(names(scndry_anlys_params_ls))
-    x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls <- append(x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls,
-                                                                        results_ls_ls %>%
-                                                                          purrr::map(~.x[-1]))
-  }
-  return(x)
-}
-make_plot_fn_and_args_ls <- function(type_1L_chr,
-                                     depnt_var_desc_1L_chr,
-                                     args_ls = NULL,
-                                     base_size_1L_dbl = 11,
-                                     brms_mdl = NULL,
-                                     correspondences_lup = NULL,
-                                     depnt_var_nm_1L_chr = NULL,
-                                     new_var_nm_1L_chr = NA_character_,
-                                     predn_type_1L_chr = NULL,
-                                     round_var_nm_1L_chr = NULL,
-                                     sd_dbl = NA_real_,
-                                     seed_1L_dbl = 23456,
-                                     sfx_1L_chr = " from table",
-                                     table_predn_mdl = NULL,
-                                     tfmn_1L_chr = "NTF",
-                                     tfd_data_tb = NULL,
-                                     utl_min_val_1L_dbl = -1,
-                                     x_lbl_1L_chr = NA_character_,
-                                     y_lbl_1L_chr = NA_character_){
-  if(!is.null(brms_mdl)){
-    set.seed(seed_1L_dbl)
-    tfd_data_tb <- transform_ds_for_all_cmprsn_plts(tfd_data_tb = tfd_data_tb,
-                                                    model_mdl = brms_mdl,
-                                                    depnt_var_nm_1L_chr = depnt_var_nm_1L_chr,
-                                                    is_brms_mdl_1L_lgl = inherits(brms_mdl,"brmsfit"),
-                                                    predn_type_1L_chr = predn_type_1L_chr,
-                                                    sd_dbl = NA_real_,
-                                                    sfx_1L_chr = ifelse(is.null(table_predn_mdl),
-                                                                        " from brmsfit",
-                                                                        sfx_1L_chr),
-                                                    tfmn_1L_chr = tfmn_1L_chr,
-                                                    utl_min_val_1L_dbl = utl_min_val_1L_dbl)
-    if(!is.null(table_predn_mdl)){
-      tfd_data_tb <- transform_ds_for_all_cmprsn_plts(tfd_data_tb = tfd_data_tb,
-                                                      model_mdl = table_predn_mdl,
-                                                      depnt_var_nm_1L_chr = depnt_var_nm_1L_chr,
-                                                      is_brms_mdl_1L_lgl = F,
-                                                      predn_type_1L_chr = predn_type_1L_chr,
-                                                      sd_dbl = sd_dbl,
-                                                      sfx_1L_chr = ifelse(!is.null(brms_mdl),
-                                                                          " from table",
-                                                                          sfx_1L_chr),
-                                                      tfmn_1L_chr = tfmn_1L_chr,
-                                                      utl_min_val_1L_dbl = utl_min_val_1L_dbl)
-    }
-  }
-  ref_idx_1L_int <- which(type_1L_chr == c("coefs", "hetg",
-                                           "dnst", "sctr_plt",
-                                           "sim_dnst", "sim_sctr",
-                                           "cnstrd_dnst", "cnstrd_sctr_plt",
-                                           "cnstrd_sim_dnst", "cnstrd_sim_sctr"))
-  
-  if (ref_idx_1L_int %in% c(3,5,7,9)) {
-    plt_fn <- plot_obsd_predd_dnst
-    fn_args_ls <- list(tfd_data_tb = tfd_data_tb,
-                       base_size_1L_dbl = base_size_1L_dbl,
-                       depnt_var_nm_1L_chr = depnt_var_nm_1L_chr,
-                       depnt_var_desc_1L_chr = depnt_var_desc_1L_chr,
-                       new_var_nm_1L_chr = new_var_nm_1L_chr,
-                       predd_val_var_nm_1L_chr = ifelse(ref_idx_1L_int %in% c(3,7),
-                                                        transform_predd_var_nm("Predicted",
-                                                                               sfx_1L_chr = ifelse(!is.null(table_predn_mdl),
-                                                                                                   " from brmsfit",
-                                                                                                   sfx_1L_chr),
-                                                                               utl_min_val_1L_dbl = ifelse(ref_idx_1L_int == 3, ####
-                                                                                                           NA_real_,
-                                                                                                           utl_min_val_1L_dbl)),
-                                                        transform_predd_var_nm("Simulated",
-                                                                               sfx_1L_chr = ifelse(!is.null(table_predn_mdl),
-                                                                                                   " from brmsfit",
-                                                                                                   sfx_1L_chr),
-                                                                               utl_min_val_1L_dbl = ifelse(ref_idx_1L_int == 5,
-                                                                                                           NA_real_,
-                                                                                                           utl_min_val_1L_dbl))),
-                       cmprsn_predd_var_nm_1L_chr = ifelse(is.null(table_predn_mdl),
-                                                           NA_character_,
-                                                           ifelse(ref_idx_1L_int %in% c(3,7), ##
-                                                                  transform_predd_var_nm("Predicted",
-                                                                                         sfx_1L_chr = " from table",
-                                                                                         utl_min_val_1L_dbl = ifelse(ref_idx_1L_int == 3, ##
-                                                                                                                     NA_real_,
-                                                                                                                     utl_min_val_1L_dbl)),
-                                                                  transform_predd_var_nm("Simulated",
-                                                                                         sfx_1L_chr =" from table",
-                                                                                         utl_min_val_1L_dbl = ifelse(ref_idx_1L_int == 5, ##
-                                                                                                                     NA_real_,
-                                                                                                                     utl_min_val_1L_dbl)))))
-  }else{
-    plt_fn <- plot_obsd_predd_sctr_cmprsn
-    fn_args_ls <- list(tfd_data_tb = tfd_data_tb,
-                       base_size_1L_dbl = base_size_1L_dbl,
-                       correspondences_lup = correspondences_lup,
-                       depnt_var_nm_1L_chr = depnt_var_nm_1L_chr,
-                       depnt_var_desc_1L_chr = depnt_var_desc_1L_chr,
-                       round_var_nm_1L_chr = round_var_nm_1L_chr,
-                       predd_val_var_nm_1L_chr = ifelse(ref_idx_1L_int %in% c(4,8),
-                                                        transform_predd_var_nm("Predicted",
-                                                                               sfx_1L_chr = ifelse(!is.null(table_predn_mdl),
-                                                                                                   " from brmsfit",
-                                                                                                   sfx_1L_chr),
-                                                                               utl_min_val_1L_dbl = ifelse(ref_idx_1L_int == 4,
-                                                                                                           NA_real_,
-                                                                                                           utl_min_val_1L_dbl)),
-                                                        transform_predd_var_nm("Simulated",
-                                                                               sfx_1L_chr = ifelse(!is.null(table_predn_mdl),
-                                                                                                   " from brmsfit",
-                                                                                                   sfx_1L_chr),
-                                                                               utl_min_val_1L_dbl = ifelse(ref_idx_1L_int == 6,
-                                                                                                           NA_real_,
-                                                                                                           utl_min_val_1L_dbl))),
-                       args_ls = args_ls,
-                       x_lbl_1L_chr = x_lbl_1L_chr,
-                       y_lbl_1L_chr = y_lbl_1L_chr)
-  }
-  plot_fn_and_args_ls <- list(plt_fn = plt_fn,
-                              fn_args_ls = fn_args_ls)
-  return(plot_fn_and_args_ls)
-}
-investigate_SpecificPredictors <- function(x,
-                                           depnt_var_min_val_1L_dbl = numeric(0),
-                                           signft_covars_cndn_1L_chr = "any"){
-  results_ls <- write_predr_and_covars_cmprsn(scored_data_tb = x@a_YouthvarsProfile@a_Ready4useDyad@ds_tb,
-                                              bl_tb = x@c_SpecificResults@b_SpecificPrivate@private_outp_ls$bl_tb,
-                                              depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
-                                              ds_smry_ls = x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$ds_smry_ls,
-                                              mdl_smry_ls = x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$mdl_smry_ls,
-                                              output_data_dir_1L_chr = x@b_SpecificParameters@paths_ls$output_data_dir_1L_chr,
-                                              seed_1L_int = x@b_SpecificParameters@seed_1L_int,
-                                              signft_covars_cndn_1L_chr = signft_covars_cndn_1L_chr)
-  rename_lup <- x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$rename_lup
-  session_ls <- x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$session_ls
-  x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls <- append(results_ls[-1],
-                                                                      list(rename_lup = rename_lup,
-                                                                           session_ls = session_ls))
-  x@c_SpecificResults@b_SpecificPrivate@private_outp_ls <- results_ls[1]
-  x_SpecificFixed <- SpecificFixed(a_YouthvarsProfile = x@a_YouthvarsProfile,
-                                   b_SpecificParameters = x@b_SpecificParameters,
-                                   c_SpecificResults = x@c_SpecificResults,
-                                   paths_chr = x@paths_chr,
-                                   dissemination_1L_chr = x@dissemination_1L_chr)
-  return(x_SpecificFixed)
-}
-transform_tbls_for_csnl_mdls <- function(results_ls){
-  if(is.na(results_ls$cohort_ls$n_fup_1L_dbl)){
-    results_ls$tables_ls <- results_ls$tables_ls %>% 
-      purrr::map(~{
-        column_nm_1L_chr <- names(.x)[1]
-        .x %>%
-          dplyr::mutate(!!rlang::sym(column_nm_1L_chr) := !!rlang::sym(column_nm_1L_chr) %>%
-                          purrr::map_chr(~ifelse(endsWith(.x, " baseline"), stringi::stri_replace_last_fixed(.x, " baseline","") ,.x)))
-      })
-  }
-  return(results_ls)
-}
-transform_tbls_for_covar_nms <- function(results_ls){
-  results_ls$tables_ls <- results_ls$tables_ls %>% 
-    purrr::map(~{
-      column_nm_1L_chr <- names(.x)[1]
-      predr_vars_nms_chr <- get_predrs_by_ctg(results_ls,collapse_1L_lgl = T) %>% purrr::flatten_chr()
-      .x %>%
-        dplyr::mutate(!!rlang::sym(column_nm_1L_chr) := !!rlang::sym(column_nm_1L_chr) %>%
-                        purrr::map_chr(~
-                                         {
-                                           var_nm_1L_chr <- .x
-                                           purrr::reduce(c(" baseline"," change"),
-                                                         .init = var_nm_1L_chr,
-                                                         ~ ifelse(endsWith(.x, .y) &&  !(stringi::stri_replace_last_fixed(.x, .y,"") %in% predr_vars_nms_chr),
-                                                                  ready4::get_from_lup_obj(results_ls$mdl_ingredients_ls$dictionary_tb,
-                                                                                   match_value_xx = stringi::stri_replace_last_fixed(.x, .y,""),
-                                                                                   match_var_nm_1L_chr = "var_nm_chr",
-                                                                                   target_var_nm_1L_chr = "var_desc_chr") %>%
-                                                                    Hmisc::capitalize(),
-                                                                  .x))
-                                         }
-                        ))
-    })
-  return(results_ls)
 }
 write_mdl_type_covars_mdls <- function (data_tb,
                                         depnt_var_min_val_1L_dbl = numeric(0),
@@ -3119,11 +3069,11 @@ write_predr_and_covars_cmprsn <- function(scored_data_tb,
                                                                        mdl_types_lup = mdl_smry_ls$mdl_types_lup)
   bl_tb <- scored_data_tb %>%
     transform_ds_for_tstng(depnt_var_nm_1L_chr = ds_smry_ls$depnt_var_nm_1L_chr,#youthvars::
-                                      candidate_predrs_chr = ds_smry_ls$candidate_predrs_chr,
-                                      covar_var_nms_chr = ds_smry_ls$candidate_covar_nms_chr,
-                                      remove_all_msng_1L_lgl = T,
-                                      round_var_nm_1L_chr = ds_smry_ls$round_var_nm_1L_chr,
-                                      round_val_1L_chr = ds_smry_ls$round_bl_val_1L_chr)
+                           candidate_predrs_chr = ds_smry_ls$candidate_predrs_chr,
+                           covar_var_nms_chr = ds_smry_ls$candidate_covar_nms_chr,
+                           remove_all_msng_1L_lgl = T,
+                           round_var_nm_1L_chr = ds_smry_ls$round_var_nm_1L_chr,
+                           round_val_1L_chr = ds_smry_ls$round_bl_val_1L_chr)
   mdl_smry_ls$mdls_with_covars_smry_tb <- write_mdl_type_covars_mdls(bl_tb,
                                                                      depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
                                                                      depnt_var_nm_1L_chr = ds_smry_ls$depnt_var_nm_1L_chr,
@@ -3375,6 +3325,179 @@ write_secondary_analyses <- function(input_params_ls,
                             reference_1L_int = .x)})
   return(results_ls)
 }
+write_shareable_mdls <- function (outp_smry_ls,
+                                  new_dir_nm_1L_chr = "G_Shareable",
+                                  shareable_title_detail_1L_chr = "",
+                                  write_mdls_to_dv_1L_lgl = F)
+{
+  output_dir_chr <- write_shareable_dir(outp_smry_ls = outp_smry_ls,
+                                        new_dir_nm_1L_chr = new_dir_nm_1L_chr)
+  incld_mdl_paths_chr <- make_incld_mdl_paths(outp_smry_ls)
+  fake_ds_tb <- make_fake_ts_data(outp_smry_ls, depnt_vars_are_NA_1L_lgl = F)
+  mdl_types_lup <- outp_smry_ls$mdl_types_lup
+  shareable_mdls_ls <- outp_smry_ls$mdl_nms_ls %>% purrr::flatten_chr() %>%
+    purrr::map2(incld_mdl_paths_chr, ~{
+      model_mdl <- readRDS(paste0(outp_smry_ls$path_to_write_to_1L_chr,"/",.y))
+      
+      mdl_smry_tb <- outp_smry_ls$mdls_smry_tb %>% dplyr::filter(Model ==
+                                                                   .x)
+      mdl_nm_1L_chr <- .x
+      mdl_type_1L_chr <- get_mdl_type_from_nm(mdl_nm_1L_chr,
+                                              mdl_types_lup = mdl_types_lup)
+      tfmn_1L_chr <- ready4::get_from_lup_obj(mdl_types_lup,
+                                              match_value_xx = mdl_type_1L_chr,
+                                              match_var_nm_1L_chr = "short_name_chr",
+                                              target_var_nm_1L_chr = "tfmn_chr",
+                                              evaluate_1L_lgl = F)
+      predn_type_1L_chr <- ready4::get_from_lup_obj(mdl_types_lup,
+                                                    match_value_xx = mdl_type_1L_chr,
+                                                    match_var_nm_1L_chr = "short_name_chr",
+                                                    target_var_nm_1L_chr = "predn_type_chr",
+                                                    evaluate_1L_lgl = F)
+      if (is.na(predn_type_1L_chr))
+        predn_type_1L_chr <- NULL
+      control_1L_chr <- ready4::get_from_lup_obj(mdl_types_lup,
+                                                 match_value_xx = mdl_type_1L_chr,
+                                                 match_var_nm_1L_chr = "short_name_chr",
+                                                 target_var_nm_1L_chr = "control_chr",
+                                                 evaluate_1L_lgl = F)
+      sd_dbl <- mdl_smry_tb %>%
+        dplyr::filter(Parameter == "SD (Intercept)") %>%
+        dplyr::select(Estimate, SE) %>%
+        t() %>%
+        as.vector()
+      mdl_fake_ds_tb <- fake_ds_tb %>%
+        add_tfd_var_to_ds(depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr,
+                          tfmn_1L_chr = tfmn_1L_chr,
+                          depnt_var_max_val_1L_dbl = 0.999) %>%
+        dplyr::select(names(model_mdl$data))
+      model_mdl$data <- mdl_fake_ds_tb
+      table_predn_mdl <- make_shareable_mdl(fake_ds_tb = mdl_fake_ds_tb,
+                                            mdl_smry_tb = mdl_smry_tb, depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr,
+                                            id_var_nm_1L_chr = outp_smry_ls$id_var_nm_1L_chr,
+                                            tfmn_1L_chr = tfmn_1L_chr,
+                                            mdl_type_1L_chr = mdl_type_1L_chr,
+                                            mdl_types_lup = mdl_types_lup,
+                                            control_1L_chr = control_1L_chr,
+                                            start_1L_chr = NA_character_,
+                                            seed_1L_int = outp_smry_ls$seed_1L_int)
+      saveRDS(table_predn_mdl, paste0(output_dir_chr[4], "/", .x,
+                                      ".RDS"))
+      saveRDS(model_mdl, paste0(output_dir_chr[3], "/", .x,
+                                ".RDS"))
+      scaling_fctr_dbl <- make_scaling_fctr_dbl(outp_smry_ls)
+      write_ts_mdl_plts(brms_mdl = model_mdl,
+                        table_predn_mdl = table_predn_mdl,
+                        tfd_data_tb = outp_smry_ls$scored_data_tb %>%
+                          transform_tb_to_mdl_inp(depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr,
+                                                  predr_vars_nms_chr = outp_smry_ls$predr_vars_nms_ls %>% purrr::flatten_chr() %>% unique(),
+                                                  id_var_nm_1L_chr = outp_smry_ls$id_var_nm_1L_chr,
+                                                  round_var_nm_1L_chr = outp_smry_ls$round_var_nm_1L_chr,
+                                                  round_bl_val_1L_chr = outp_smry_ls$round_bl_val_1L_chr,
+                                                  scaling_fctr_dbl = scaling_fctr_dbl),
+                        depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr,
+                        mdl_nm_1L_chr = mdl_nm_1L_chr,
+                        path_to_write_to_1L_chr = output_dir_chr[3],
+                        predn_type_1L_chr = predn_type_1L_chr,
+                        round_var_nm_1L_chr = outp_smry_ls$round_var_nm_1L_chr,
+                        sd_dbl = sd_dbl,
+                        sfx_1L_chr = " from table",
+                        tfmn_1L_chr = tfmn_1L_chr,
+                        utl_min_val_1L_dbl = ifelse(!is.null(outp_smry_ls$utl_min_val_1L_dbl),
+                                                    outp_smry_ls$utl_min_val_1L_dbl,
+                                                    -1))
+      table_predn_mdl
+    }) %>% stats::setNames(outp_smry_ls$mdl_nms_ls %>% purrr::flatten_chr())
+  outp_smry_ls$shareable_mdls_ls <- shareable_mdls_ls
+  outp_smry_ls$shareable_mdls_tb <-  NULL
+  ingredients_ls <- list(depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr,
+                         dictionary_tb = outp_smry_ls$dictionary_tb %>%
+                           dplyr::filter(var_nm_chr %in% names(fake_ds_tb)),
+                         id_var_nm_1L_chr = outp_smry_ls$id_var_nm_1L_chr,
+                         fake_ds_tb = fake_ds_tb,
+                         mdls_lup = outp_smry_ls$shareable_mdls_ls %>%
+                           purrr::map2_dfr(names(outp_smry_ls$shareable_mdls_ls),
+                                           ~{
+                                             if(inherits(.x,"betareg")){
+                                               coeffs_dbl <- .x$coefficients$mean
+                                             }else{
+                                               coeffs_dbl <- .x$coefficients
+                                             }
+                                             mdl_type_1L_chr = get_mdl_type_from_nm(.y,
+                                                                                    mdl_types_lup = outp_smry_ls$mdl_types_lup)
+                                             tibble::tibble(mdl_nms_chr = .y) %>%
+                                               dplyr::mutate(predrs_ls = list(coeffs_dbl %>%
+                                                                                names() %>%
+                                                                                stringr::str_remove_all("_change") %>%
+                                                                                stringr::str_remove_all("_baseline") %>%
+                                                                                unique() %>%
+                                                                                purrr::discard(~ .x== "(Intercept)")),
+                                                             mdl_type_chr = mdl_type_1L_chr,
+                                                             tfmn_chr = ready4::get_from_lup_obj(outp_smry_ls$mdl_types_lup,
+                                                                                                 match_value_xx = mdl_type_1L_chr,
+                                                                                                 match_var_nm_1L_chr = "short_name_chr",
+                                                                                                 target_var_nm_1L_chr = "tfmn_chr",
+                                                                                                 evaluate_1L_lgl = F))
+                                           }), #
+                         mdls_smry_tb = outp_smry_ls$mdls_smry_tb,#
+                         mdl_types_lup = mdl_types_lup,
+                         predictors_lup = outp_smry_ls$predictors_lup,#
+                         round_var_nm_1L_chr = outp_smry_ls$round_var_nm_1L_chr,
+                         seed_1L_int = outp_smry_ls$seed_1L_int,
+                         utl_min_val_1L_dbl = ifelse(!is.null(outp_smry_ls$utl_min_val_1L_dbl),
+                                                     outp_smry_ls$utl_min_val_1L_dbl,
+                                                     -1))
+  saveRDS(ingredients_ls, paste0(output_dir_chr[2], "/mdl_ingredients",
+                                 ".RDS"))
+  outp_smry_ls <- write_mdls_to_dv(outp_smry_ls,
+                                   new_dir_nm_1L_chr = new_dir_nm_1L_chr,
+                                   shareable_title_detail_1L_chr = shareable_title_detail_1L_chr,
+                                   output_dir_chr = output_dir_chr)
+  return(outp_smry_ls)
+}
+write_sngl_predr_multi_mdls_outps <- function (data_tb, mdl_types_chr, predr_var_nm_1L_chr, predr_var_desc_1L_chr,
+                                               predr_vals_dbl, path_to_write_to_1L_chr, new_dir_nm_1L_chr =  "A_Candidate_Mdls_Cmprsn", start_1L_chr = NULL,
+                                               covar_var_nms_chr = NA_character_,
+                                               depnt_var_min_val_1L_dbl = numeric(0), # NEW
+                                               depnt_var_nm_1L_chr = "utl_total_w", # Remove default
+                                               folds_1L_int = 10, mdl_types_lup = NULL, fl_nm_pfx_1L_chr = "A_RT_",
+                                               plt_indcs_int = NA_integer_, dictionary_tb)
+{
+  if (is.null(mdl_types_lup))
+    utils::data("mdl_types_lup", envir = environment())
+  data_tb <- transform_ds_for_mdlng(data_tb, depnt_var_nm_1L_chr = depnt_var_nm_1L_chr,
+                                    depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl, 
+                                    predr_var_nm_1L_chr = predr_var_nm_1L_chr, covar_var_nms_chr = covar_var_nms_chr)
+  output_dir_1L_chr <- write_new_outp_dir(path_to_write_to_1L_chr,
+                                          new_dir_nm_1L_chr = new_dir_nm_1L_chr)
+  ready4show::write_mdl_plt_fl(plt_fn = make_tfmn_cmprsn_plt,
+                               fn_args_ls = list(data_tb = data_tb,
+                                                 depnt_var_nm_1L_chr = depnt_var_nm_1L_chr,
+                                                 dictionary_tb = dictionary_tb),
+                               path_to_write_to_1L_chr = output_dir_1L_chr,
+                               plt_nm_1L_chr = "A_TFMN_CMPRSN_DNSTY",
+                               height_1L_dbl = 6,
+                               width_1L_dbl = 10)
+  smry_of_sngl_predr_mdls_tb <- purrr::map_dfr(mdl_types_chr,
+                                               ~{
+                                                 tfmn_1L_chr <- ready4::get_from_lup_obj(mdl_types_lup,
+                                                                                         match_var_nm_1L_chr = "short_name_chr", match_value_xx = .x,
+                                                                                         target_var_nm_1L_chr = "tfmn_chr", evaluate_1L_lgl = F)
+                                                 write_mdl_type_sngl_outps(data_tb, folds_1L_int = folds_1L_int,
+                                                                           depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
+                                                                           depnt_var_nm_1L_chr = depnt_var_nm_1L_chr, start_1L_chr = start_1L_chr,
+                                                                           tfmn_1L_chr = tfmn_1L_chr, predr_var_nm_1L_chr = predr_var_nm_1L_chr,
+                                                                           predr_var_desc_1L_chr = predr_var_desc_1L_chr,
+                                                                           predr_vals_dbl = predr_vals_dbl, covar_var_nms_chr = covar_var_nms_chr,
+                                                                           mdl_type_1L_chr = .x, path_to_write_to_1L_chr = output_dir_1L_chr,
+                                                                           mdl_types_lup = mdl_types_lup, mdl_fl_nm_1L_chr = paste0(fl_nm_pfx_1L_chr,
+                                                                                                                                    predr_var_nm_1L_chr, "_", .x), plt_indcs_int = plt_indcs_int)
+                                               })
+  if (!is.null(folds_1L_int))
+    smry_of_sngl_predr_mdls_tb <- smry_of_sngl_predr_mdls_tb %>%
+    dplyr::arrange(dplyr::desc(RsquaredP))
+  return(smry_of_sngl_predr_mdls_tb)
+}
 write_ts_mdls <- function (data_tb, # Rename lngl
                            depnt_var_nm_1L_chr = "utl_total_w", #Remove default
                            predr_vars_nms_ls,
@@ -3521,6 +3644,7 @@ write_ts_mdl_plts <- function (brms_mdl, # Rename lngl
     purrr::discard(is.na)
   return(mdl_plts_paths_ls)
 }
+## For TTU
 author_TTUReports <- function(x,
                               depnt_var_desc_1L_chr = NA_character_,
                               download_tmpl_1L_lgl = T,
