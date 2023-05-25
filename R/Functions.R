@@ -1,5 +1,6 @@
 ## For stand alone program
-# Currently editing: authorData_SpecificMixed write_shareable_mdls_to_dv write_shareable_mdls make_brms_mdl_plt make_fake_ts_data
+# Currently editing:
+# make_knit_pars_ls make_mdl_nms_ls make_predr_vars_nms_ls write_mdl_smry_rprt write_scndry_analysis write_ts_mdls write_ts_mdls_from_alg_outp
 ## From ready4show
 manufacture.ready4show_correspondences <- function(x,
                                                    data_ls,
@@ -968,6 +969,7 @@ renew_ScorzProfile <- function(x,
 }
 # From specific
 authorData_SpecificMixed <- function(x,
+                                     depnt_var_min_val_1L_dbl = numeric(0),
                                      title_1L_chr = "An R model object",
                                      what_1L_chr = "Shareable"){
   if(what_1L_chr == "Shareable"){
@@ -979,6 +981,7 @@ authorData_SpecificMixed <- function(x,
                                                       .x)
                                outp_smry_ls <- outp_smry_ls %>%
                                  write_shareable_mdls(new_dir_nm_1L_chr = "G_Shareable",
+                                                      depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
                                                       shareable_title_detail_1L_chr = title_1L_chr)
                                
                                outp_smry_ls[-1]
@@ -1099,6 +1102,7 @@ depict_SpecificSynopsis <- function(x,
                                     base_height_1L_dbl = 13,
                                     base_size_1L_dbl = 30,
                                     depnt_var_desc_1L_chr = NA_character_,
+                                    depnt_var_min_val_1L_dbl = numeric(0),
                                     dim_plot_heights_int = c(10L, 1L),
                                     dim_plot_log_log_tfmn_1L_lgl = F,
                                     dim_plot_rows_cols_pair_int = c(3L,2L),
@@ -1134,6 +1138,7 @@ depict_SpecificSynopsis <- function(x,
                                         base_size_1L_dbl =  base_size_1L_dbl,
                                         correspondences_lup = correspondences_lup,
                                         depnt_var_desc_1L_chr = depnt_var_desc_1L_chr,
+                                        depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
                                         labels_chr = labels_chr,
                                         label_x_1L_dbl = label_x_1L_dbl,
                                         label_y_1L_dbl = label_y_1L_dbl,
@@ -1145,7 +1150,8 @@ depict_SpecificSynopsis <- function(x,
   }
   if(what_1L_chr == "composite_utl"){
     ds_descvs_ls <- manufacture_SpecificSynopsis(x,#manufacture when exporting
-                                what_1L_chr = "ds_descvs_ls")
+                                                 depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
+                                                 what_1L_chr = "ds_descvs_ls")
     outp_smry_ls <- append(x@b_SpecificResults@a_SpecificShareable@shareable_outp_ls,
                            x@b_SpecificResults@b_SpecificPrivate@private_outp_ls)
     maui_domains_col_nms_chr <- x@c_SpecificParameters@domain_labels_chr
@@ -1196,14 +1202,16 @@ depict_SpecificSynopsis <- function(x,
 }
 enhance_SpecificSynopsis <- function(x,
                                      depnt_var_nms_chr = NA_character_,
+                                     depnt_var_min_val_1L_dbl = numeric(0),
                                      what_1L_chr = "shareable_outp_ls",
                                      with_1L_chr = "results_ls"){
   if(what_1L_chr == "shareable_outp_ls"){
     outp_smry_ls <- x@b_SpecificResults@a_SpecificShareable@shareable_outp_ls
     if(with_1L_chr == "results_ls"){
       outp_smry_ls$results_ls <- manufacture_SpecificSynopsis(x,#manufacture when exporting
-                                             depnt_var_nms_chr = depnt_var_nms_chr,
-                                             what_1L_chr = "results_ls")
+                                                              depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
+                                                              depnt_var_nms_chr = depnt_var_nms_chr,
+                                                              what_1L_chr = "results_ls")
       # outp_smry_ls$results_ls$abstract_args_ls <- x@abstract_args_ls
       
     }
@@ -1357,6 +1365,7 @@ investigate_SpecificMixed <- function(x,
     input_params_ls$params_ls$iters_1L_int <- x@b_SpecificParameters@iters_1L_int
     results_ls_ls <- write_secondary_analyses(input_params_ls,
                                               backend_1L_chr = backend_1L_chr,
+                                              depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
                                               new_dir_nm_1L_chr = new_dir_nm_1L_chr) %>%
       stats::setNames(names(scndry_anlys_params_ls))
     x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls <- append(x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls,
@@ -1534,6 +1543,7 @@ make_cmpst_sctr_and_dnst_plt <- function(outp_smry_ls,
                                          predr_var_nms_chr = NA_character_,
                                          base_size_1L_dbl = 16,
                                          correspondences_lup = NULL,
+                                         depnt_var_min_val_1L_dbl = numeric(0),
                                          depnt_var_desc_1L_chr = NA_character_,
                                          labels_chr = c("A","B","C","D"),
                                          label_x_1L_dbl = 0.1,
@@ -1574,6 +1584,7 @@ make_cmpst_sctr_and_dnst_plt <- function(outp_smry_ls,
                                        brms_mdl = brms_mdl,
                                        correspondences_lup = correspondences_lup,
                                        depnt_var_desc_1L_chr = depnt_var_desc_1L_chr,#
+                                       depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
                                        mdl_nm_1L_chr = mdl_nm_1L_chr,
                                        type_1L_chr = .x,
                                        predn_type_1L_chr = NULL,
@@ -1802,6 +1813,15 @@ make_mdl_nms_ls <- function (predr_vars_nms_ls, mdl_types_chr)
                                                                                 "_")), .y, "_", mdl_types_chr))
   return(mdl_nms_ls)
 }
+make_unique_ls_elmt_idx_int <- function (data_ls)
+{
+  combos_tb <- tibble::tibble(names_chr = data_ls %>% purrr::map_chr(~paste0(.x[1],ifelse(length(.x)>1,.x[2],""))),
+                              indices_int = NA_integer_)
+    combos_tb <- combos_tb %>% dplyr::group_by(names_chr) %>%
+      dplyr::mutate(indices_int = dplyr::row_number())
+    unique_ls_elmt_idx_int <- combos_tb$indices_int
+  return(unique_ls_elmt_idx_int)
+}
 write_mdl_plts <- function (data_tb, model_mdl, mdl_fl_nm_1L_chr = "OLS_NTF", 
                             depnt_var_min_val_1L_dbl = numeric(0),
                             depnt_var_nm_1L_chr = "utl_total_w",
@@ -1982,8 +2002,40 @@ make_plot_fn_and_args_ls <- function(type_1L_chr,
                               fn_args_ls = fn_args_ls)
   return(plot_fn_and_args_ls)
 }
+make_predr_vars_nms_ls <- function (main_predrs_chr, covars_ls, existing_predrs_ls = NULL, combinations_1L_lgl = F)
+{
+  predr_vars_nms_ls <- covars_ls %>% purrr::map(~{
+    covars_chr <- .x
+    purrr::map(main_predrs_chr, ~list(c(.x), c(.x, covars_chr) %>% purrr::discard(is.na))) %>%
+      purrr::flatten()
+  }) %>% purrr::flatten() %>% unique()
+  predr_vars_nms_ls <- predr_vars_nms_ls[order(sapply(predr_vars_nms_ls,
+                                                      length))]
+  if(combinations_1L_lgl){
+    main_predrs_ls <- predr_vars_nms_ls[predr_vars_nms_ls %>% purrr::map_lgl(~length(.x)==1)]
+    combinations_from_chr <- setdiff(predr_vars_nms_ls[predr_vars_nms_ls %>% purrr::map_lgl(~length(.x)>1)] %>% purrr::flatten_chr(), main_predrs_chr)
+    combinations_ls <- 1:length(combinations_from_chr) %>% 
+      purrr::map(~gtools::combinations(length(combinations_from_chr),.x,combinations_from_chr) %>% t() %>% as.data.frame() %>% as.list() %>% unname()) %>% purrr::flatten()
+    combinations_ls <- main_predrs_ls %>%
+      purrr::map(~
+                   {
+                     main_1L_chr <- .x
+                     combinations_ls %>%
+                       purrr::map(~c(main_1L_chr,.x))
+      }) %>% purrr::flatten()
+    predr_vars_nms_ls <- append(main_predrs_ls,combinations_ls)
+  }
+  if(!is.null(existing_predrs_ls)){
+    predr_vars_nms_ls <- predr_vars_nms_ls[predr_vars_nms_ls %>% purrr::map_lgl(~{
+      test_chr <- .x
+      !any(existing_predrs_ls %>% purrr::map_lgl(~identical(.x,test_chr))
+      )})]
+  }
+  return(predr_vars_nms_ls)
+}
 make_results_ls <- function(spine_of_results_ls = NULL, # CORE OF S4 Classes - rename ts to lngl # and metamorphose methods
                             abstract_args_ls = NULL,
+                            depnt_var_min_val_1L_dbl = numeric(0),
                             dv_ds_nm_and_url_chr = NULL,
                             output_format_ls = NULL,
                             params_ls_ls = NULL,
@@ -2015,6 +2067,7 @@ make_results_ls <- function(spine_of_results_ls = NULL, # CORE OF S4 Classes - r
   descv_tbls_ls <- paste0(spine_of_results_ls$output_data_dir_1L_chr,"/",spine_of_results_ls$outp_smry_ls$file_paths_chr[spine_of_results_ls$outp_smry_ls$file_paths_chr %>% purrr::map_lgl(~stringr::str_detect(.x,"descv_tbls_ls.RDS"))]) %>% readRDS()
   if(make_cmpst_plt_1L_lgl){
     composite_plt <- make_cmpst_sctr_and_dnst_plt(spine_of_results_ls$outp_smry_ls,
+                                                  depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
                                                   output_data_dir_1L_chr = spine_of_results_ls$output_data_dir_1L_chr,
                                                   predr_var_nms_chr = spine_of_results_ls$outp_smry_ls$predr_vars_nms_ls[[1]])
     cowplot::save_plot(paste0(spine_of_results_ls$output_data_dir_1L_chr,"/dens_and_sctr.png"), composite_plt, base_height = 20)
@@ -2411,6 +2464,7 @@ manufacture_SpecificProject <- function(x,
   return(object_xx)
 }
 manufacture_SpecificSynopsis <- function(x,
+                                         depnt_var_min_val_1L_dbl = numeric(0),
                                          depnt_var_nms_chr = NA_character_,
                                          make_cmpst_plt_1L_lgl = F,
                                          scndry_anlys_params_ls = NULL,
@@ -2425,7 +2479,8 @@ manufacture_SpecificSynopsis <- function(x,
     if(what_1L_chr %in% c("ds_descvs_ls","ds_smry_ls","mdl_smry_ls")){ # Could add input_params_ls to this logic once corresponding SpecificProject methd is updated
       # Would then need to pass scndry_anlys_params_ls to mthd
       object_xx <- manufacture_SpecificProject(y_SpecificMixed, # manufacture when exported
-                               what_1L_chr = what_1L_chr)
+                                               depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
+                                               what_1L_chr = what_1L_chr)
     }
     if(what_1L_chr %in% c("abstract_args_ls","input_params_ls","results_ls")){
       header_yaml_args_ls <- ready4show::make_header_yaml_args_ls(authors_tb = x@authors_r3,
@@ -2480,6 +2535,7 @@ manufacture_SpecificSynopsis <- function(x,
       if(what_1L_chr %in% c("abstract_args_ls","results_ls")){
         object_xx$study_descs_ls$predr_ctgs_ls <- make_predr_ctgs_ls(x@b_SpecificResults@a_SpecificShareable@shareable_outp_ls)
         object_xx <- make_results_ls(dv_ds_nm_and_url_chr = object_xx$path_params_ls$dv_ds_nm_and_url_chr,
+                                     depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
                                      make_cmpst_plt_1L_lgl = make_cmpst_plt_1L_lgl,
                                      outp_smry_ls = x@b_SpecificResults@a_SpecificShareable@shareable_outp_ls,
                                      output_format_ls = object_xx$output_format_ls,
@@ -2817,6 +2873,21 @@ transform_tbls_for_covar_nms <- function(results_ls){
                         ))
     })
   return(results_ls)
+}
+write_analyses <- function(input_params_ls,
+                           abstract_args_ls = NULL,
+                           depnt_var_min_val_1L_dbl = numeric(0),
+                           start_at_int = c(2,1)){
+  ready4show::write_report(params_ls = input_params_ls$params_ls,
+                           paths_ls = input_params_ls$path_params_ls$paths_ls,
+                           rprt_nm_1L_chr = "AAA_PMRY_ANLYS_MTH",
+                           abstract_args_ls = abstract_args_ls,
+                           header_yaml_args_ls = input_params_ls$header_yaml_args_ls)
+  if(!is.null(input_params_ls$scndry_anlys_params_ls)){
+    write_secondary_analyses(input_params_ls,
+                             depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,)
+    
+  }
 }
 write_mdl_cmprsn <- function(scored_data_tb,
                              ds_smry_ls,
@@ -3338,14 +3409,15 @@ write_scndry_analysis <- function(valid_params_ls_ls,
     !any(existing_predrs_ls %>% purrr::map_lgl(~identical(.x,test_chr))
     )})]
   outp_smry_ls <- write_ts_mdls_from_alg_outp(outp_smry_ls = outp_smry_ls,
-                                              path_to_write_to_1L_chr = outp_smry_ls$path_to_write_to_1L_chr,
-                                              utl_min_val_1L_dbl = params_ls$utl_min_val_1L_dbl,
-                                              predictors_lup = params_ls$predictors_lup,
                                               backend_1L_chr = backend_1L_chr,
-                                              new_dir_nm_1L_chr = new_dir_nm_1L_chr,
+                                              control_ls = params_ls$control_ls,
+                                              depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
                                               iters_1L_int = params_ls$iters_1L_int,
+                                              new_dir_nm_1L_chr = new_dir_nm_1L_chr,
+                                              path_to_write_to_1L_chr = outp_smry_ls$path_to_write_to_1L_chr,
+                                              predictors_lup = params_ls$predictors_lup,
                                               prior_ls = params_ls$prior_ls,
-                                              control_ls = params_ls$control_ls)
+                                              utl_min_val_1L_dbl = params_ls$utl_min_val_1L_dbl,)
   return(outp_smry_ls)
 }
 write_scndry_analysis_dir <- function(paths_ls,
@@ -3357,6 +3429,7 @@ write_scndry_analysis_dir <- function(paths_ls,
 }
 write_secondary_analyses <- function(input_params_ls,
                                      backend_1L_chr = "cmdstanr",
+                                     depnt_var_min_val_1L_dbl = numeric(0),
                                      new_dir_nm_1L_chr = "F_TS_Mdls"){
   references_int <- 1:length(input_params_ls$scndry_anlys_params_ls)
   results_ls <- references_int %>%
@@ -3372,6 +3445,7 @@ write_secondary_analyses <- function(input_params_ls,
                             backend_1L_chr = backend_1L_chr,
                             candidate_covar_nms_chr = changes_ls$candidate_covar_nms_chr,
                             candidate_predrs_chr = changes_ls$candidate_predrs_chr,
+                            depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
                             new_dir_nm_1L_chr = new_dir_nm_1L_chr,
                             path_params_ls = input_params_ls$path_params_ls,
                             predictors_lup = changes_ls$predictors_lup,
@@ -3388,7 +3462,7 @@ write_shareable_mdls <- function (outp_smry_ls,
   output_dir_chr <- write_shareable_dir(outp_smry_ls = outp_smry_ls,
                                         new_dir_nm_1L_chr = new_dir_nm_1L_chr)
   incld_mdl_paths_chr <- make_incld_mdl_paths(outp_smry_ls)
-  fake_ds_tb <- make_fake_ts_data(outp_smry_ls, depnt_vars_are_NA_1L_lgl = F)
+  fake_ds_tb <- make_fake_ts_data(outp_smry_ls, depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl, depnt_vars_are_NA_1L_lgl = F)
   mdl_types_lup <- outp_smry_ls$mdl_types_lup
   shareable_mdls_ls <- outp_smry_ls$mdl_nms_ls %>% purrr::flatten_chr() %>%
     purrr::map2(incld_mdl_paths_chr, ~{
@@ -3634,6 +3708,8 @@ write_ts_mdls_from_alg_outp <- function (outp_smry_ls, # rename lngl
       stringr::str_sub(end=-8)
   output_dir_1L_chr <- write_new_outp_dir(path_to_write_to_1L_chr,
                                           new_dir_nm_1L_chr = new_dir_nm_1L_chr)
+  # UPDATE outp_smry_ls$predr_vars_nms_ls
+  # UPDATE outp_smry_ls$mdl_nms_ls
   mdls_smry_tb <- write_ts_mdls(data_tb = outp_smry_ls$scored_data_tb,
                                 depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
                                 depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr, predr_vars_nms_ls = outp_smry_ls$predr_vars_nms_ls,
@@ -3742,6 +3818,7 @@ write_ts_mdl_plts <- function (brms_mdl, # Rename lngl
 ## For TTU
 author_TTUReports <- function(x,
                               depnt_var_desc_1L_chr = NA_character_,
+                              depnt_var_min_val_1L_dbl = numeric(0),
                               download_tmpl_1L_lgl = T,
                               fl_type_1L_chr = ".eps",
                               timepoint_new_nms_chr = NA_character_,
@@ -3825,13 +3902,14 @@ author_TTUReports <- function(x,
     if(type_1L_chr == "Plots"){
       composite_1_plt <- depict_SpecificSynopsis(x@a_TTUSynopsis,#depictSlot(x,"a_TTUSynopsis", when exported
                                     depnt_var_desc_1L_chr = depnt_var_desc_1L_chr,
+                                    depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
                                     timepoint_old_nms_chr = procureSlot(x,
                                                                         "a_TTUSynopsis@d_YouthvarsProfile@timepoint_vals_chr"),
                                     timepoint_new_nms_chr = timepoint_new_nms_chr,
                                     what_1L_chr = "composite_mdl",
                                     write_1L_lgl = T)
       composite_2_plt <- depict_SpecificSynopsis(x@a_TTUSynopsis,#depictSlot(x,"a_TTUSynopsis", when exported
-                                    what_1L_chr = "composite_utl",
+                                                 what_1L_chr = "composite_utl",
                                     write_1L_lgl = T)
       if(!is.na(what_1L_chr)){
         ggplot2::ggsave(file = paste0(dir_1L_chr,

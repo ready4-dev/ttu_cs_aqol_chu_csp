@@ -367,6 +367,12 @@ projects_ls <- projects_ls %>%
 # To manually over-ride the default selections, replace the value supplied to new_val_xx, e.g. new_val_xx = c("cdaysoor", "dage", if(inherits(.x@a_ScorzProfile,"ScorzAqol6Adol")){ "dgender"}),
 ```
 
+```{r}
+#ADD SECTION HERE TO RENAME COVARS
+```
+
+
+
 We now assess the multivariate models.  More model/plot objects are saved to a sub-directory of our output directory.
 
 ```{r message=FALSE, results='hide', warning=FALSE}
@@ -390,7 +396,7 @@ For our primary analysis, we use a baysesian formulation of the models we previo
 
 ```{r }
 projects_ls <- projects_ls %>% 
-  purrr::map(~ renewSlot(.x, "c_SpecificProject", investigate_SpecificMixed(.x@c_SpecificProject))) ##investigateSlot(.x, "c_SpecificProject")
+  purrr::map(~ renewSlot(.x, "c_SpecificProject", investigate_SpecificMixed(.x@c_SpecificProject, depnt_var_min_val_1L_dbl = 0.00001))) ##investigateSlot(.x, "c_SpecificProject")
 # A <- renewSlot(A, "c_SpecificProject",
 #                investigate_SpecificMixed(A@c_SpecificProject)
 #                #investigateSlot(A, "c_SpecificProject")
