@@ -407,6 +407,7 @@ For our primary analysis, we use a baysesian formulation of the models we previo
 ```{r }
 projects_ls <- projects_ls %>% 
   purrr::map(~ renewSlot(.x, "c_SpecificProject", investigate_SpecificMixed(.x@c_SpecificProject, combinations_1L_lgl = T, 
+                                                                            cores_1L_int = parallel::detectCores(), # For PC, use cores_1L_int = 1L
                                                                             max_nbr_of_covars_1L_int = 2L, depnt_var_min_val_1L_dbl = 0.00001))) ##investigateSlot(.x, "c_SpecificProject")
 # A <- renewSlot(A, "c_SpecificProject",
 #                investigate_SpecificMixed(A@c_SpecificProject)

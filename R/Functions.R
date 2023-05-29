@@ -1556,6 +1556,7 @@ investigate_SpecificFixed <- function(x,
 investigate_SpecificMixed <- function(x,
                                       backend_1L_chr = "cmdstanr",
                                       combinations_1L_lgl = F, 
+                                      cores_1L_int = 1L,
                                       depnt_var_min_val_1L_dbl = numeric(0),
                                       existing_predrs_ls = NULL, 
                                       max_nbr_of_covars_1L_int = integer(0),
@@ -1575,6 +1576,7 @@ investigate_SpecificMixed <- function(x,
     results_ls <- write_ts_mdls_from_alg_outp(outp_smry_ls = append(x@c_SpecificResults@b_SpecificPrivate@private_outp_ls,
                                                                     x@c_SpecificResults@a_SpecificShareable@shareable_outp_ls),
                                               combinations_1L_lgl = combinations_1L_lgl, 
+                                              cores_1L_int = cores_1L_int,
                                               depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
                                               existing_predrs_ls = existing_predrs_ls, 
                                               max_nbr_of_covars_1L_int = max_nbr_of_covars_1L_int,
@@ -1608,6 +1610,7 @@ investigate_SpecificMixed <- function(x,
     results_ls_ls <- write_secondary_analyses(input_params_ls,
                                               backend_1L_chr = backend_1L_chr,
                                               combinations_1L_lgl = combinations_1L_lgl, 
+                                              cores_1L_int = cores_1L_int,
                                               existing_predrs_ls = existing_predrs_ls, 
                                               max_nbr_of_covars_1L_int = max_nbr_of_covars_1L_int,
                                               depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
@@ -2563,7 +2566,8 @@ make_smry_of_brm_mdl <- function (mdl_ls,
     dplyr::mutate(Parameter = c("SD (Intercept)","Intercept",
                                 purrr::map(predr_vars_nms_chr,
                                            ~paste0(.x, 
-                                                   c(" baseline",
+                                                   c("",
+                                                     " baseline",
                                                      " change",
                                                      " scaled",
                                                      " unscaled")
@@ -3481,6 +3485,7 @@ transform_tbls_for_covar_nms <- function(results_ls){
 write_analyses <- function(input_params_ls,
                            abstract_args_ls = NULL,
                            combinations_1L_lgl = F, 
+                           cores_1L_int = 1L,
                            depnt_var_min_val_1L_dbl = numeric(0),
                            existing_predrs_ls = NULL, 
                            max_nbr_of_covars_1L_int = integer(0),
@@ -3493,6 +3498,7 @@ write_analyses <- function(input_params_ls,
   if(!is.null(input_params_ls$scndry_anlys_params_ls)){
     write_secondary_analyses(input_params_ls,
                              combinations_1L_lgl = combinations_1L_lgl, 
+                             cores_1L_int = cores_1L_int,
                              existing_predrs_ls = existing_predrs_ls, 
                              max_nbr_of_covars_1L_int = max_nbr_of_covars_1L_int,
                              depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,)
@@ -3981,6 +3987,7 @@ write_scndry_analysis <- function(valid_params_ls_ls,
                                   path_params_ls,
                                   reference_1L_int,
                                   combinations_1L_lgl = F, 
+                                  cores_1L_int = 1L,
                                   depnt_var_max_val_1L_dbl = 0.99999, 
                                   depnt_var_min_val_1L_dbl = 0.00001, 
                                   existing_predrs_ls = NULL, 
@@ -4101,6 +4108,7 @@ write_scndry_analysis <- function(valid_params_ls_ls,
   outp_smry_ls <- write_ts_mdls_from_alg_outp(outp_smry_ls = outp_smry_ls,
                                               backend_1L_chr = backend_1L_chr,
                                               combinations_1L_lgl = combinations_1L_lgl, 
+                                              cores_1L_int = cores_1L_int,
                                               control_ls = params_ls$control_ls,
                                               depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
                                               existing_predrs_ls = existing_predrs_ls, 
@@ -4123,6 +4131,7 @@ write_scndry_analysis_dir <- function(paths_ls,
 write_secondary_analyses <- function(input_params_ls,
                                      backend_1L_chr = "cmdstanr",
                                      combinations_1L_lgl = F, 
+                                     cores_1L_int = 1L,
                                      existing_predrs_ls = NULL, 
                                      max_nbr_of_covars_1L_int = integer(0),
                                      depnt_var_min_val_1L_dbl = numeric(0),
@@ -4142,6 +4151,7 @@ write_secondary_analyses <- function(input_params_ls,
                             candidate_covar_nms_chr = changes_ls$candidate_covar_nms_chr,
                             candidate_predrs_chr = changes_ls$candidate_predrs_chr,
                             combinations_1L_lgl = combinations_1L_lgl, 
+                            cores_1L_int = cores_1L_int,
                             depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
                             existing_predrs_ls = existing_predrs_ls, 
                             max_nbr_of_covars_1L_int = max_nbr_of_covars_1L_int,
@@ -4364,6 +4374,7 @@ write_sngl_predr_multi_mdls_outps <- function (data_tb, mdl_types_chr, predr_var
   return(smry_of_sngl_predr_mdls_tb)
 }
 write_ts_mdls <- function (data_tb, # Rename lngl
+                           cores_1L_int = 1L,
                            depnt_var_min_val_1L_dbl = numeric(0),
                            depnt_var_nm_1L_chr = "utl_total_w", #Remove default
                            predr_vars_nms_ls,
@@ -4374,28 +4385,78 @@ write_ts_mdls <- function (data_tb, # Rename lngl
                            mdl_types_lup, seed_1L_int = 1000L, prior_ls = NULL, control_ls = NULL){
   if (!dir.exists(mdl_smry_dir_1L_chr))
     dir.create(mdl_smry_dir_1L_chr)
-  mdls_smry_tb <- purrr::map_dfr(1:length(mdl_nms_ls), ~{
-    idx_1L_int <- .x
-    purrr::map_dfr(mdl_nms_ls[[idx_1L_int]], ~{
-      smry_ls <- make_smry_of_ts_mdl_outp(data_tb = data_tb,
-                                          depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
-                                          predr_vars_nms_chr = predr_vars_nms_ls[[idx_1L_int]],
-                                          mdl_nm_1L_chr = .x,
-                                          path_to_write_to_1L_chr = mdl_smry_dir_1L_chr,
-                                          depnt_var_nm_1L_chr = depnt_var_nm_1L_chr, id_var_nm_1L_chr = id_var_nm_1L_chr,
-                                          round_var_nm_1L_chr = round_var_nm_1L_chr, round_bl_val_1L_chr = round_bl_val_1L_chr,
-                                          predictors_lup = predictors_lup, utl_min_val_1L_dbl = utl_min_val_1L_dbl,
-                                          backend_1L_chr = backend_1L_chr, iters_1L_int = iters_1L_int,
-                                          mdl_types_lup = mdl_types_lup, seed_1L_int = seed_1L_int, prior_ls = prior_ls, control_ls = control_ls)
-      Sys.sleep(5)
-      smry_ls$smry_of_ts_mdl_tb
+  args_ls <- list(data_tb = data_tb,
+                  mdl_nms_ls = mdl_nms_ls, 
+                  mdl_smry_dir_1L_chr = mdl_smry_dir_1L_chr,
+                  mdl_types_lup = mdl_types_lup,
+                  predictors_lup = predictors_lup, 
+                  predr_vars_nms_ls = predr_vars_nms_ls,# Rename lngl
+                  depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
+                  depnt_var_nm_1L_chr = depnt_var_nm_1L_chr, #Remove default
+                  id_var_nm_1L_chr = id_var_nm_1L_chr, round_var_nm_1L_chr = round_var_nm_1L_chr,
+                  round_bl_val_1L_chr = round_bl_val_1L_chr, utl_min_val_1L_dbl = utl_min_val_1L_dbl, backend_1L_chr = backend_1L_chr,
+                  iters_1L_int = iters_1L_int,
+                  seed_1L_int = seed_1L_int, prior_ls = prior_ls, control_ls = prior_ls)
+  if(cores_1L_int>1){
+    threaded_ls <- parallel::mclapply(1:length(mdl_nms_ls), function(idx_1L_int, args_ls){rlang::exec(make_inner_loop_mdl_smry, idx_1L_int , !!!args_ls)}, args_ls, mc.cores = cores_1L_int)
+    mdls_smry_tb <- threaded_ls %>% purrr::map_dfr(~.x)
+  }else{
+    mdls_smry_tb <- purrr::map_dfr(1:length(mdl_nms_ls), ~{
+      #idx_1L_int <- .x
+      rlang::exec(make_inner_loop_mdl_smry, .x, !!!args_ls)
+      # purrr::map_dfr(mdl_nms_ls[[idx_1L_int]], ~{
+      #   smry_ls <- make_smry_of_ts_mdl_outp(data_tb = data_tb,
+      #                                       depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
+      #                                       predr_vars_nms_chr = predr_vars_nms_ls[[idx_1L_int]],
+      #                                       mdl_nm_1L_chr = .x,
+      #                                       path_to_write_to_1L_chr = mdl_smry_dir_1L_chr,
+      #                                       depnt_var_nm_1L_chr = depnt_var_nm_1L_chr, id_var_nm_1L_chr = id_var_nm_1L_chr,
+      #                                       round_var_nm_1L_chr = round_var_nm_1L_chr, round_bl_val_1L_chr = round_bl_val_1L_chr,
+      #                                       predictors_lup = predictors_lup, utl_min_val_1L_dbl = utl_min_val_1L_dbl,
+      #                                       backend_1L_chr = backend_1L_chr, iters_1L_int = iters_1L_int,
+      #                                       mdl_types_lup = mdl_types_lup, seed_1L_int = seed_1L_int, prior_ls = prior_ls, control_ls = control_ls)
+      #   Sys.sleep(5)
+      #   smry_ls$smry_of_ts_mdl_tb
+      # })
     })
-  })
+  }
   saveRDS(mdls_smry_tb, paste0(mdl_smry_dir_1L_chr, "/mdls_smry_tb.RDS"))
   return(mdls_smry_tb)
 }
+make_inner_loop_mdl_smry <- function(idx_1L_int,
+                                     data_tb, # Rename lngl
+                                     mdl_nms_ls, 
+                                     mdl_smry_dir_1L_chr, 
+                                     mdl_types_lup,
+                                     predictors_lup,
+                                     predr_vars_nms_ls,
+                                     depnt_var_min_val_1L_dbl = numeric(0),
+                                     depnt_var_nm_1L_chr = "utl_total_w", #Remove default
+                                     id_var_nm_1L_chr = "fkClientID", round_var_nm_1L_chr = "round",
+                                     round_bl_val_1L_chr = "Baseline", utl_min_val_1L_dbl = -1, backend_1L_chr = getOption("brms.backend",
+                                                                                                                           "rstan"),
+                                      iters_1L_int = 4000L,
+                                      seed_1L_int = 1000L, prior_ls = NULL, control_ls = NULL){
+  #idx_1L_int <- .x
+  mdls_smry_tb <- purrr::map_dfr(mdl_nms_ls[[idx_1L_int]], ~{
+    smry_ls <- make_smry_of_ts_mdl_outp(data_tb = data_tb,
+                                        depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
+                                        predr_vars_nms_chr = predr_vars_nms_ls[[idx_1L_int]],
+                                        mdl_nm_1L_chr = .x,
+                                        path_to_write_to_1L_chr = mdl_smry_dir_1L_chr,
+                                        depnt_var_nm_1L_chr = depnt_var_nm_1L_chr, id_var_nm_1L_chr = id_var_nm_1L_chr,
+                                        round_var_nm_1L_chr = round_var_nm_1L_chr, round_bl_val_1L_chr = round_bl_val_1L_chr,
+                                        predictors_lup = predictors_lup, utl_min_val_1L_dbl = utl_min_val_1L_dbl,
+                                        backend_1L_chr = backend_1L_chr, iters_1L_int = iters_1L_int,
+                                        mdl_types_lup = mdl_types_lup, seed_1L_int = seed_1L_int, prior_ls = prior_ls, control_ls = control_ls)
+    Sys.sleep(5)
+    smry_ls$smry_of_ts_mdl_tb
+  })
+  return(mdls_smry_tb)
+  }
 write_ts_mdls_from_alg_outp <- function (outp_smry_ls, # rename lngl
                                          predictors_lup,
+                                         cores_1L_int = 1L,
                                          depnt_var_min_val_1L_dbl = numeric(0),
                                          utl_min_val_1L_dbl = -1,
                                          backend_1L_chr = getOption("brms.backend", "rstan"),
@@ -4420,6 +4481,7 @@ write_ts_mdls_from_alg_outp <- function (outp_smry_ls, # rename lngl
   outp_smry_ls$mdl_nms_ls <- make_mdl_nms_ls(outp_smry_ls$predr_vars_nms_ls,
                                              mdl_types_chr = outp_smry_ls$prefd_mdl_types_chr)
   mdls_smry_tb <- write_ts_mdls(data_tb = outp_smry_ls$scored_data_tb,
+                                cores_1L_int = cores_1L_int,
                                 depnt_var_min_val_1L_dbl = depnt_var_min_val_1L_dbl,
                                 depnt_var_nm_1L_chr = outp_smry_ls$depnt_var_nm_1L_chr, predr_vars_nms_ls = outp_smry_ls$predr_vars_nms_ls,
                                 id_var_nm_1L_chr = outp_smry_ls$id_var_nm_1L_chr, round_var_nm_1L_chr = outp_smry_ls$round_var_nm_1L_chr,
