@@ -321,6 +321,23 @@ projects_ls <- projects_ls %>%
 ```
 
 ### Identify preferred predictors and covariates
+```{r}
+# You can inspect the dummy variables that will be created for each categorical candidate covariate by uncommenting and running:
+# manufacture_Ready4useDyad(projects_ls$CHU_r4@c_SpecificProject@a_YouthvarsProfile@a_Ready4useDyad, type_1L_chr = "dummys", what_1L_chr = "factors", restrict_to_chr = projects_ls$CHU_r4@c_SpecificProject@b_SpecificParameters@candidate_covars_chr) 
+```
+
+We begin by renaming (for brevity) some of the default values for the dummy variables that will be created when using categorical covariates.
+
+```{r}
+projects_ls <- projects_ls %>% 
+  purrr::map(~ renewSlot(.x, "c_SpecificProject", 
+                         #investigateSlot(A,"c_SpecificProject")
+                         renew_SpecificProject(.x@c_SpecificProject, new_val_xx = list(cpdiaggrouped = c("NotApp","Other","SubstanceUse"),
+                                                                                       dstudyingworking = c("Both","Study","Work"),
+                                                                                       sremoteness = c("MajorCities","OuterRegional","RemoteVeryRemote")), what_1L_chr = "dummys"))) 
+```
+
+
 Next we assess multiple versions of our preferred model type - one single predictor model for each of our candidate predictors and the same models with candidate covariates added. A number of model/plot objects are saved to a sub-directory of our output directory. We specify the criterion that for each utility measure, candidate covariates must be significant parameters in all preferred models (the "all" value for `signft_covars_cndn_1L_chr`) to be considered for subsequent steps. To relax this condition, supply "any" instead of "all".
 
 ```{r message=FALSE, results='hide', warning=FALSE}
@@ -367,11 +384,6 @@ projects_ls <- projects_ls %>%
 # To manually over-ride the default selections, replace the value supplied to new_val_xx, e.g. new_val_xx = c("cdaysoor", "dage", if(inherits(.x@a_ScorzProfile,"ScorzAqol6Adol")){ "dgender"}),
 ```
 
-```{r}
-#ADD SECTION HERE TO RENAME COVARS
-# manufacture_Ready4useDyad(projects_ls$CHU_r4@c_SpecificProject@a_YouthvarsProfile@a_Ready4useDyad, flatten_1L_lgl = T, type_1L_chr = "vars", what_1L_chr = "factors", restrict_to_chr = c("cdaysoor", "dage", "dgender")) 
-```
-
 We now assess the multivariate models.  More model/plot objects are saved to a sub-directory of our output directory.
 
 ```{r message=FALSE, results='hide', warning=FALSE}
@@ -387,8 +399,7 @@ We first modify the default parameters used when creating the models to address 
 
 ```{r}
 projects_ls <- projects_ls %>% 
-  purrr::map(~ renewSlot(.x, "c_SpecificProject@b_SpecificParameters@control_ls", list(adapt_delta = 0.99))) 
-# This step may not be necessary owhen using the real data.
+  purrr::map(~ renewSlot(.x, "c_SpecificProject@b_SpecificParameters@control_ls", list(adapt_delta = 0.99))) # This step may not be necessary when using the real data - skipping it will speed execution of the next step.
 ```
 
 For our primary analysis, we use a baysesian formulation of the models we previously selected. A series of large model files are written to a sub-directory of the local output data directory.
