@@ -69,7 +69,7 @@ source("../R/Functions.R")
 ## Specify data locations
 To start, we need to specify the local and remote locations for storing project input and output data. The real study dataset (for study implementation and reproduction) can be read from a local location and fake data that closely resembles the study dataset (which are useful for algorithm testing and demonstration) can be read from either local or remote (i.e. online repository) locations. Note, if using real data, the local output directory **must be a secure location** as copies of the input dataset will be saved in this directory. Non-confidential analyses outputs will be shared via online repositories. Different repositories will be used for outputs created with real or fake data and which map to AQOL-6D or CHU-9D health utility.
 
-```{r eval=FALSE}
+```{r }
 is_real_1L_lgl <- F # 
 #path_to_data_1L_chr <- "****Uncomment and replace with path to local data****"
 path_to_output_1L_chr <- normalizePath("../Data")
