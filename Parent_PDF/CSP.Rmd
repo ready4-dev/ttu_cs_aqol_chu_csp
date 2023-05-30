@@ -43,7 +43,7 @@ When using this code it is important to note:
 If you do not already have the required libraries to run this program installed, you can do so by un-commenting and running the following lines.
 
 ```{r }
-# devtools::install_github("ready4-dev/ready4) 
+# devtools::install_github("ready4-dev/ready4") 
 # devtools::install_github("ready4-dev/TTU") 
 ```
 
@@ -61,6 +61,7 @@ library(TTU)
 Source functions that we will use later.
 
 ```{r}
+r_dir_1L_chr <- "../R/"
 source("../R/Functions.R")
 ```
 
