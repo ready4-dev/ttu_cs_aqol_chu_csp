@@ -1,11 +1,11 @@
 cff-version: 1.2.0
-message: "Matthew Hamilton and Caroline Gao  (2023). ttu_cs_aqol_chu_csp: Complete study program to reproduce all steps from data ingest through to results dissemination for a study to K10 (psychological distress) and SOFAS (functioning) to AQoL-6D and CHU-9D health utility. Version 0.1"
+message: "Matthew Hamilton and Caroline Gao  (2023). ttu_cs_aqol_chu_csp: Complete study program to reproduce all steps from data ingest through to results dissemination for a study to K10 (psychological distress) and SOFAS (functioning) to AQoL-6D and CHU-9D health utility. Version 0.1.2"
 authors:
   - family-names: "Hamilton"
     given-names: "Matthew"
   - family-names: "Gao"
     given-names: "Caroline"
 title: "ttu_cs_aqol_chu_csp: Complete study program to reproduce all steps from data ingest through to results dissemination for a study to K10 (psychological distress) and SOFAS (functioning) to AQoL-6D and CHU-9D health utility"
-version: 0.1
+version: 0.1.2
 date-released: 2023-06-30
 url: "https://github.com/ready4-dev/ttu_cs_aqol_chu_csp"

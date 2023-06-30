@@ -4,11 +4,9 @@ author:
       email: matthew.hamilton1@monash.edu
       institute: [Monash, Orygen]
       correspondence: true
-      equal_contributor: "no"
   - name: Caroline X Gao
     email: caroline.gao@orygen.org.au
     institute: [Orygen, CYMH, Monash]
-    equal_contributor: "no"
 institute:
   - Orygen: Orygen, Parkville, Australia
   - CYMH: Centre for Youth Mental Health; University of Melbourne, Parkville, Australia

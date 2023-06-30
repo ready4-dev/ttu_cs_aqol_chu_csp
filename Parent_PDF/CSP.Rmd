@@ -40,7 +40,7 @@ When using this code it is important to note:
 3) The code in this program is highly abstracted which means that its detailed workings are not exposed. However, as all code is open source you are able to scrutinise the underlying code if you wish. The websites, manuals and repositories of the ready4 framework libraries used in this analysis are a good starting point. 
 
 # Install and load required libraries
-If you do not already have the required libraries to run this program installed, you can do so by un-commenting and running the following lines. Not if you do not already have cmdstandr installed and configured you will also need to perform a minor additional configuration step as outlined on https://mc-stan.org/cmdstanr/ .
+If you do not already have the required libraries to run this program installed, you can do so by un-commenting and running the following lines. Note, if you do not already have cmdstandr installed and configured you will also need to perform a minor additional configuration step as outlined on https://mc-stan.org/cmdstanr/ .
 
 ```{r }
 # install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
@@ -219,6 +219,7 @@ projects_ls <- projects_ls %>%
                                        what_1L_chr = "project"))
 ```
 
+## Create descriptive tables and figures
 We now generate tables and charts that describe our dataset. These are saved in a sub-directory of our output data directory.
 
 ```{r message=FALSE, results='hide', warning=FALSE}
@@ -227,7 +228,7 @@ projects_ls <- projects_ls %>%
                                what_1L_chr = "descriptives"))
 ```
 
-## Undertake exploratory modelling using baseline dataset
+## Undertake exploratory modelling
 
 ### Identify preferred model types
 For each utility instrument, we next compare the performance of different model types. This step saves model objects and plots to a sub-directory of our output directory. When modelling, we constrain utility values to the range 0.00001 to 0.99999 (i.e. converting values outside this range to the nearest lower or upper bound) as this allows us to explore models with log transformations.
