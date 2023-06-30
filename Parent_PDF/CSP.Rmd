@@ -58,11 +58,11 @@ library(scorz)
 library(TTU)
 ```
 
-Source functions that we will use later.
 
-```{r}
-r_dir_1L_chr <- "../R/"
-source("../R/Functions.R")
+```{r echo=F, eval=F}
+#Source functions that we will use later.
+# r_dir_1L_chr <- "../R/"
+# source("../R/Functions.R")
 ```
 
 # Ingest, transform, label and score data
@@ -70,36 +70,37 @@ source("../R/Functions.R")
 ## Specify data locations
 To start, we need to specify the local and remote locations for storing project input and output data. The real study dataset (for study implementation and reproduction) can be read from a local location and fake data that closely resembles the study dataset (which are useful for algorithm testing and demonstration) can be read from either local or remote (i.e. online repository) locations. Note, if using real data, the local output directory **must be a secure location** as copies of the input dataset will be saved in this directory. Non-confidential analyses outputs will be shared via online repositories. Different repositories will be used for outputs created with real or fake data and which map to AQOL-6D or CHU-9D health utility.
 
-```{r }
-is_real_1L_lgl <- F # 
+```{r}
 #path_to_data_1L_chr <- "****Uncomment and replace with path to local data****"
+```
+
+```{r }
+consent_1L_chr <- "Y"
+cores_1L_int <- 1L # # Default value. For Mac users, consider using cores_1L_int = parallel::detectCores() (but not yet - there is a bug in the multicore implementation that needs to be fixed!).
+is_real_1L_lgl <- F # Replace with T if working with real data
+name_of_dataset_1L_chr <- "synthetic" # Only update if you are using fake data and want to use a different data source.
 path_to_output_1L_chr <- normalizePath("../Data")
 repositories_ls <- purrr::map2(c(rep("TTU",2),rep("fakes",3)),
-                                c("https://doi.org/10.7910/DVN/FDRUXH",
-                                  "https://doi.org/10.7910/DVN/N4NEHL",
-                                  "https://doi.org/10.7910/DVN/LYBMB0",
-                                  "https://doi.org/10.7910/DVN/3R5TS3",
-                                  "https://doi.org/10.7910/DVN/HJXYKQ"),
-                                ~ Ready4useRepos(dv_nm_1L_chr = .x,
-                                                 dv_ds_nm_1L_chr = .y,
-                                                 dv_server_1L_chr = "dataverse.harvard.edu")) %>%
+                                c("https://doi.org/10.7910/DVN/FDRUXH", "https://doi.org/10.7910/DVN/N4NEHL",
+                                  "https://doi.org/10.7910/DVN/LYBMB0", "https://doi.org/10.7910/DVN/3R5TS3", "https://doi.org/10.7910/DVN/HJXYKQ"),
+                                ~ Ready4useRepos(dv_nm_1L_chr = .x, dv_ds_nm_1L_chr = .y, dv_server_1L_chr = "dataverse.harvard.edu")) %>%
   stats::setNames(c("aqol_real_r4", "chu_real_r4","aqol_fake_r4", "chu_fake_r4","records_fake_r4"))
 ```
 
 ## Ingest data
-Based on the path value specified above, we can now ingest either the real study dataset or the synthetic (fake) data. We perform a number of data transformations (using the `transform_csnl_example_ds` function) to prepare the dataset for analysis and then pair the dataset with its data dictionary, label the dataset and provide details of the unique identifier variable using the `YouthvarsProfile` module.
+Based on the path value specified above, we can now ingest either the real study dataset or the synthetic (fake) data. We perform a number of data transformations (using the `transform_csnl_example_ds` function) to prepare the dataset for analysis and then use the `Ready4useDyad` module to pair the dataset with its data dictionary and label dataset variables. 
 
 ```{r}
-A <- YouthvarsProfile(a_Ready4useDyad = Ready4useDyad(ds_tb = {
-  if(!is.na(path_to_data_1L_chr)){readRDS(path_to_data_1L_chr)
-    }else{repositories_ls$records_fake_r4 %>%
-        ingest(fls_to_ingest_chr = c("SPECIFY_FILE_NAME_WHEN_WRITTEN"), # Synthetic dataset is not currently publicly available
-               metadata_1L_lgl = F)}} %>% transform_csnl_example_ds(),
-  dictionary_r3 = repositories_ls$aqol_real_r4 %>%
-    ingest(fls_to_ingest_chr = c("ymh_clinical_aqol_chu_dict_r3"),
-           metadata_1L_lgl = F)) %>%
-  renew_Ready4useDyad(type_1L_chr = "label"),
-                   id_var_nm_1L_chr = "fkClientID") # MODIFY WHEN READY4USE LIBRARY IS UPDATED
+A <- Ready4useDyad(ds_tb = {if(!is.na(path_to_data_1L_chr)){readRDS(path_to_data_1L_chr)}else{repositories_ls$records_fake_r4 %>% 
+    ingest(fls_to_ingest_chr = c(name_of_dataset_1L_chr), metadata_1L_lgl = F)}} %>% transform_csnl_example_ds(),
+    dictionary_r3 = repositories_ls$aqol_real_r4 %>% ingest(fls_to_ingest_chr = c("ymh_clinical_aqol_chu_dict_r3"), metadata_1L_lgl = F)) %>%
+  renew(type_1L_chr = "label")
+```
+
+We provide details of the unique identifier variable using the `YouthvarsProfile` module.
+
+```{r}
+A <- YouthvarsProfile(a_Ready4useDyad = A, id_var_nm_1L_chr = "fkClientID") 
 ```
 
 ## Create utility mapping projects
@@ -107,59 +108,46 @@ We supply the dataset along with its metadata to two `TTUProject` modules - one 
 
 ```{r}
 projects_ls <- list(AQOL_r4 = TTUProject(a_ScorzProfile = ScorzAqol6Adol(a_YouthvarsProfile = A, total_wtd_var_nm_1L_chr = "AQOL6D")) %>%
-                      renewSlot("a_ScorzProfile@instrument_dict_r3",
-                                .@a_ScorzProfile@instrument_dict_r3 %>%
-                                  renew(filter_cdn_1L_chr = "var_nm_chr!='aqol6d_total_w'",
-                                        var_nm_chr = "AQOL6D",
-                                        var_ctg_chr = "utility overall score (final weighted)",
-                                        var_desc_chr = "AQOL-6D (weighted total)",
-                                        var_type_chr = "numeric") %>%
-                                  dplyr::arrange(var_ctg_chr,var_nm_chr)),
+                      renewSlot("a_ScorzProfile@instrument_dict_r3", .@a_ScorzProfile@instrument_dict_r3 %>%
+                                  renew(filter_cdn_1L_chr = "var_nm_chr!='aqol6d_total_w'", var_nm_chr = "AQOL6D",
+                                        var_ctg_chr = "utility overall score (final weighted)", var_desc_chr = "AQOL-6D (weighted total)", 
+                                        var_type_chr = "numeric") %>% dplyr::arrange(var_ctg_chr, var_nm_chr)),
                     CHU_r4 = TTUProject(a_ScorzProfile = ScorzProfile(a_YouthvarsProfile = A, country_1L_chr = "Australia",
-                                                                      domain_wtd_var_nms_chr = renew(A@a_Ready4useDyad@dictionary_r3, filter_cdn_1L_chr = "startsWith(var_nm_chr,'chu9_')") %>%
+                                                                      domain_wtd_var_nms_chr = renew(A@a_Ready4useDyad@dictionary_r3, 
+                                                                                                     filter_cdn_1L_chr = "startsWith(var_nm_chr,'chu9_')") %>%
                                                                         dplyr::pull(var_nm_chr) %>% as.character(),
-                                                                      instrument_dict_r3 =  renew(A@a_Ready4useDyad@dictionary_r3,filter_cdn_1L_chr = "startsWith(var_nm_chr,'chu9_')|var_nm_chr=='CHU9D'"),
-                                                                      instrument_nm_1L_chr = "Child Health Utility (9 Dimension)",instrument_short_nm_1L_chr = "CHU-9D",
+                                                                      instrument_dict_r3 =  renew(A@a_Ready4useDyad@dictionary_r3, 
+                                                                                                  filter_cdn_1L_chr = "startsWith(var_nm_chr,'chu9_')|var_nm_chr=='CHU9D'"),
+                                                                      instrument_nm_1L_chr = "Child Health Utility (9 Dimension)", instrument_short_nm_1L_chr = "CHU-9D",
                                                                       itm_labels_chr = c("worry", "sadness", "pain", "tiredness", "annoyance", "school", "sleep", "daily routine", "activities"),
                                                                       itm_prefix_1L_chr = "chu9_", total_wtd_var_nm_1L_chr = "CHU9D", total_unwtd_var_nm_1L_chr = "CHU_c")))
 rm(A) 
 ```
 
-## Verify health utility scores
-Our source dataset includes total weighted utility scores for both utility instruments. We can verify the calculations for one of these instruments, the adolescent AQoL-6D, by comparing the calculations in our dataset to those generated from item responses using the `ScorzAqol6Adol`. We therefore apply the `ScorzAqol6Adol` scoring algorithm. We also add an unweighted total of all CHU-9D item responses as we will be using this later when descriptive plots are generated.
+## Score health utility scores
+We apply the multi-instrument total scoring algorithms associated with the `ScorzAqol6Adol` and `ScorzProfile` modules. The `ScorzAqol6Adol` scoring algorithm will calculate both weighted (utility) and unweighted totals. The `ScorzProfile` algorithm calculates only also the unweighted total of all CHU-9D item responses. The weighted CHU-9D total (utility) were already pre-calculated in the dataset we ingested.
 
 ```{r}
-projects_ls <- projects_ls %>%
-  purrr::map(~renewSlot(.x,"a_ScorzProfile",{ #renewSlot(.x "a_ScorzProfile") # Will replace 
-    if(inherits(.x@a_ScorzProfile,"ScorzAqol6Adol")){
-      renew_ScorzAqol6Adol(.x@a_ScorzProfile) 
-    }else{
-      renew_ScorzProfile(.x@a_ScorzProfile)
-    }
-  })) 
+projects_ls <- projects_ls %>% purrr::map(~renew(.x, what_1L_chr = "utility"))
 ```
 
-We update the dataset copy with CHU-9D MAUI data so that it includes the AQoL totals that we calculated in the previous step.
+We update the dataset copy with CHU-9D MAUI data so that it includes the AQoL totals that we calculated in the previous step (we need both instrument totals present in each dataset to facilitate comparison / mapping).
 
 ```{r}
-projects_ls$CHU_r4 <- renewSlot(projects_ls$CHU_r4,
-                                "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb",
-                                dplyr::left_join(procureSlot(projects_ls$CHU_r4, 
-                                                              "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb"),
-                                                  procureSlot(projects_ls$AQOL_r4, 
-                                                              "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb") %>%
+projects_ls$CHU_r4 <- renewSlot(projects_ls$CHU_r4, "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb",
+                                dplyr::left_join(procureSlot(projects_ls$CHU_r4, "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb"), # Reformed
+                                                  procureSlot(projects_ls$AQOL_r4, "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb") %>% # Reformed
                                                     dplyr::select(projects_ls$AQOL_r4@a_ScorzProfile@a_YouthvarsProfile@id_var_nm_1L_chr,
                                                                   projects_ls$AQOL_r4@a_ScorzProfile@total_wtd_var_nm_1L_chr)))
 ```
 
-Next we calculate the difference between the newly generated AQoL scores to those in our source dataset.
+Our source dataset included total weighted utility scores for both utility instruments. We can use the pre-calculated AQoL-6D weighted total (utility) to verify the scores we have just generated using the `ScorzAqol6Adol`.
+We therefore calculate the difference the pre-calculated and `ScorzAqol6Adol` scored AQoL-6D weighted totals.
 
 ```{r}
-projects_ls <- projects_ls %>%
-  purrr::map(~renewSlot(.x,
-                        "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb",
-                        procureSlot(.x, "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb") %>%
-                          dplyr::mutate(difference_aqol_calcs = AQOL6D - validation_aqol_w))) 
+projects_ls <- projects_ls %>% purrr::map(~renewSlot(.x, "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb",
+                                                     procureSlot(.x, "a_ScorzProfile@a_YouthvarsProfile@a_Ready4useDyad@ds_tb") %>%
+                                                       dplyr::mutate(difference_aqol_calcs = AQOL6D - validation_aqol_w))) 
 ```
 
 ```{r}
@@ -175,22 +163,15 @@ projects_ls <- projects_ls %>%
 We begin by reorganising some of the metadata we have already specified about our dataset.
 
 ```{r}
-projects_ls <- projects_ls %>% 
-  purrr::map(~renewSlot(.x, "b_SpecificParameters", 
-                        SpecificConverter(a_ScorzProfile = .x@a_ScorzProfile) %>%
-                          metamorphose() %>%
-                          procureSlot("b_SpecificParameters"))) 
+projects_ls <- projects_ls %>% purrr::map(~renew(.x, what_1L_chr = "parameters")) 
 ```
 
-We ingest from one of our online repositories a table describing the candidate predictors that we will explore.
+We ingest from our online repositories tables describing the candidate predictors for each utility instrument that we will assess.
 
 ```{r}
 projects_ls <- projects_ls %>% 
-  purrr::map2(repositories_ls[c("aqol_real_r4", "chu_real_r4")], 
-              ~ renewSlot(.x, 
-                         "b_SpecificParameters@predictors_lup",
-                         ingest(.y, fls_to_ingest_chr = c("predictors_r3"), metadata_1L_lgl = F))) %>%  # 
-  stats::setNames(names(projects_ls))
+  purrr::map2(repositories_ls[c("aqol_real_r4", "chu_real_r4")],
+              ~ renew(.x, "use_renew_mthd", fl_nm_1L_chr = "predictors_r3", type_1L_chr = "predictors_lup", y_Ready4useRepos = .y, what_1L_chr = "parameters"))
 ```
 
 We now add the required parameters for allowable range for utility scores, the variable names of candidate predictors to be explored in the primary analysis, candidate covariates, and the variables to use when preparing descriptive statistics.
@@ -198,83 +179,28 @@ We now add the required parameters for allowable range for utility scores, the v
 ```{r}
 projects_ls <- projects_ls %>% 
   purrr::map2(c(0.03,-0.1059), # Check that this is minimum value for CHU-9D
-              ~ renewSlot(.x, "b_SpecificParameters@depnt_var_min_max_dbl", c(.y, 1)) %>% # Should be linked to ScorzClass
-                renewSlot("b_SpecificParameters@candidate_predrs_chr", c("K10",
-                                                                         #"MLT", 
-                                                                         "SOFAS")) %>%
-                renewSlot("b_SpecificParameters@candidate_covars_chr", c("d_age",  "d_gender",  
-                                                                         "d_ATSI","d_CALD",
-                                                                         "d_studying_working",
-                                                                         "c_p_diag_grouped", #"c_clinical_staging_s",
-                                                                         "c_days_oor", 
-                                                                         "s_IRSD","s_remoteness"
-                                                                         )) %>%
-                renewSlot("b_SpecificParameters@descv_var_nms_chr", c("d_age","d_gender",
-                                                                      "d_ATSI","d_CALD",
-                                                                      "d_employment_type","d_studying", "d_studying_working",
-                                                                      "c_days_cut_back", "c_days_unable", "c_days_oor",
-                                                                      "c_p_diag_grouped", #"c_clinical_staging_s",
-                                                                      "s_IRSD","s_remoteness"))) 
+              ~ renew(.x, c(.y, 1), type_1L_chr = "range", what_1L_chr = "parameters") %>%
+                renew(c("K10", "SOFAS"),  type_1L_chr = "predictors_vars", what_1L_chr = "parameters") %>% #"MLT", 
+                renew(c("d_age", "d_gender", "d_ATSI", "d_CALD", "d_studying_working", "c_p_diag_grouped", "c_days_oor", "s_IRSD","s_remoteness"), #"c_clinical_staging_s",    
+                      type_1L_chr = "covariates", what_1L_chr = "parameters") %>% 
+                renew(c("d_age", "d_gender", "d_ATSI", "d_CALD", "d_employment_type", "d_studying", "d_studying_working", "c_days_cut_back", "c_days_unable", 
+                        "c_days_oor", "c_p_diag_grouped", "s_IRSD", "s_remoteness"), type_1L_chr = "descriptives", what_1L_chr = "parameters") %>% #"c_clinical_staging_s",
+                renew(!is_real_1L_lgl, type_1L_chr = "is_fake", what_1L_chr = "parameters"))
 ```
 
 ## Create local workspace
-We create sub-directories where data generated by our analysis will be written. 
+We create sub-directories where data generated by our analysis will be written and perform checks to confirm that our dataset and parameters are internally consistent.
 
 ```{r}
 projects_ls <- projects_ls %>% 
-  purrr::map2(c("AQOL","CHU"),
-              ~ {
-                ready4::write_new_dirs(paste0(path_to_output_1L_chr,"/",.y),
-                                       consent_1L_chr = "Y")
-                X_TTUProject <- renewSlot(.x, "b_SpecificParameters@fake_1L_lgl", !is_real_1L_lgl)
-                renewSlot(X_TTUProject,
-                          "c_SpecificProject", 
-                          SpecificModels(a_YouthvarsProfile = X_TTUProject@a_ScorzProfile@a_YouthvarsProfile,
-                                            b_SpecificParameters = X_TTUProject@b_SpecificParameters,
-                                            paths_chr = paste0(path_to_output_1L_chr,"/",.y)))
-              }) 
-```
-
-We next confirm that our parameters and dataset are internally consistent. This step will also rename dataset variables that use naming conventions that are incompatible with rendering reports in subsequent steps.
-
-```{r}
-projects_ls <- projects_ls %>% 
-  purrr::map(~ renewSlot(.x,
-                          "c_SpecificProject",
-                          ratify_SpecificModels(.x@c_SpecificProject)))  # Replace when Specific library is updated - ratifySlot(.x, "c_SpecificProject")
-```
-
-We now create additional sub-directories of the nominated output data directory.
-
-```{r}
-projects_ls <- projects_ls %>% 
-  purrr::map(~ renewSlot(.x,
-                          "c_SpecificProject",
-                          authorSlot(.x, "c_SpecificProject", what_1L_chr = "workspace")))
+  purrr::map2(c("AQOL","CHU"), ~ renew(.x, consent_1L_chr = consent_1L_chr, paths_chr = paste0(path_to_output_1L_chr,"/",.y), what_1L_chr = "project"))
 ```
 
 We now generate tables and charts that describe our dataset. These are saved in a sub-directory of our output data directory.
 
 ```{r message=FALSE, results='hide', warning=FALSE}
 projects_ls <- projects_ls %>% 
-  purrr::map(~ {
-    if(inherits(.x@a_ScorzProfile,"ScorzAqol6Adol")){ # Modify when fns exported
-      x_labels_chr <-  manufacture_ScorzAqol6(.x@a_ScorzProfile, what_1L_chr = "domains")
-      }else{
-        x_labels_chr <- manufacture_ScorzProfile(.x@a_ScorzProfile, what_1L_chr = "domains", 
-                                                 custom_args_ls = list(string = .x@b_SpecificParameters@itm_labels_chr), custom_fn = Hmisc::capitalize)
-                }
-                renewSlot(.x,
-                          "c_SpecificProject",
-                          # authorSlot(.x, "c_SpecificProject", 
-                          #            what_1L_chr = "descriptives",
-                          #            digits_1L_int = 3L)
-                          author_SpecificModels(.x@c_SpecificProject,
-                                                what_1L_chr = "descriptives",
-                                                digits_1L_int = 3L,
-                                                x_labels_chr = x_labels_chr))
-                
-              }) 
+  purrr::map2(c(F,T), ~ author(.x, consent_1L_chr = consent_1L_chr, digits_1L_int = 3L, items_as_domains_1L_lgl = .y, what_1L_chr = "descriptives"))
 ```
 
 ## Undertake exploratory modelling using baseline dataset
@@ -284,92 +210,90 @@ For each utility instrument, we next compare the performance of different model 
 
 ```{r message=FALSE, results='hide', warning=FALSE}
 projects_ls <- projects_ls %>% 
-  purrr::map(~ 
-               renewSlot(.x, "c_SpecificProject",
-               investigate_SpecificModels(.x@c_SpecificProject,
-                                          depnt_var_max_val_1L_dbl = 0.99999,
-                                          depnt_var_min_val_1L_dbl = 0.00001,
-                                          session_ls = sessionInfo())
-               # investigateSlot(.x, "c_SpecificProject",
-               #                 depnt_var_max_val_1L_dbl = 0.99,
-               #                 session_ls = sessionInfo())
-               )) 
+  purrr::map(~ investigate(.x, consent_1L_chr = consent_1L_chr, depnt_var_max_val_1L_dbl = 0.9999, depnt_var_min_val_1L_dbl = 0.0001, session_ls = sessionInfo()))
 ```
 
+You can inspect the performance of models by uncommenting and running the following:
+
 ```{r}
-# Note you can inspect the performance of models by uncommenting the following:
-# exhibitSlot(projects_ls$AQOL_r4, "c_SpecificProject", what_1L_chr = "mdl_cmprsn", type_1L_chr = "results")
+# Not run
+# exhibitSlot(projects_ls$AQOL_r4, "c_SpecificProject", what_1L_chr = "mdl_cmprsn", type_1L_chr = "results") ## Reform
 # exhibitSlot(projects_ls$CHU_r4, "c_SpecificProject", what_1L_chr = "mdl_cmprsn", type_1L_chr = "results")
 ```
 
-```{r}
-# To get the codes for the top performing models of each type you can uncomment the following code:
-# projects_ls %>% purrr::map(~procureSlot(.x,"c_SpecificProject", use_procure_mthd_1L_lgl = T, what_1L_chr = "prefd_mdls"))
-```
+To get the reference codes for the top performing models of each type you can uncomment and run:
 
 ```{r}
-# If these are not the models you plan on using you can look up the reference codes for other models from a table displayed when uncommenting and running the following:
-# projects_ls$AQOL_r4@b_SpecificParameters@candidate_mdls_lup[,1:2]
+
+# projects_ls %>% purrr::map(~procureSlot(.x,"c_SpecificProject", use_procure_mthd_1L_lgl = T, what_1L_chr = "prefd_mdls")) ## Reform
 ```
 
-After inspecting the comparisons of the models we have tested, we can now specify the preferred model types to use from this point onwards.
+If the default selections are not the models you plan on using you can instead look up the reference codes for other models from a table displayed when uncommenting and running:
+
+```{r}
+# Not run
+# projects_ls$AQOL_r4@b_SpecificParameters@candidate_mdls_lup[,1:2] ## Reform
+```
+
+After inspecting the comparisons of the models we have tested, we now specify the preferred model types to use from this point onwards, using the relevant reference codes.
 
 ```{r message=FALSE, results='hide', warning=FALSE}
 projects_ls <- projects_ls %>% 
-  purrr::map(~ renewSlot(.x, "c_SpecificProject", renew(procureSlot(.x, "c_SpecificProject"),
-                                                        new_val_xx = c("GLM_GSN_LOG", "OLS_CLL"), # Replace these codes as needed - see previous commented code.
-                                                        type_1L_chr = "results", what_1L_chr = "prefd_mdls")))
+  purrr::map(~ renew(.x, c("GLM_GSN_LOG", "OLS_CLL"), type_1L_chr = "models", what_1L_chr = "results"))
 ```
 
 ### Identify preferred predictors and covariates
+If using factor variables as predictors you may wish to manually control the names of the dummy variables that will be generated for each factor as shorter names will be easier to read in summary tables. You can inspect the default dummy variable names that will be used for each factor candidate covariate by uncommenting and running:
 ```{r}
-# You can inspect the dummy variables that will be created for each categorical candidate covariate by uncommenting and running:
-# manufacture_Ready4useDyad(projects_ls$CHU_r4@c_SpecificProject@a_YouthvarsProfile@a_Ready4useDyad, type_1L_chr = "dummys", what_1L_chr = "factors", restrict_to_chr = projects_ls$CHU_r4@c_SpecificProject@b_SpecificParameters@candidate_covars_chr) 
+# Not run
+# manufacture(projects_ls$CHU_r4@c_SpecificProject@a_YouthvarsProfile@a_Ready4useDyad, type_1L_chr = "dummys", what_1L_chr = "factors", restrict_to_chr = projects_ls$CHU_r4@c_SpecificProject@b_SpecificParameters@candidate_covars_chr) ## Reform
 ```
 
-We begin by renaming (for brevity) some of the default values for the dummy variables that will be created when using categorical covariates.
+We rename some of the default values for the dummy variables that will be created.
 
 ```{r}
 projects_ls <- projects_ls %>% 
   purrr::map(~ renewSlot(.x, "c_SpecificProject", 
-                         #investigateSlot(A,"c_SpecificProject")
-                         renew_SpecificProject(.x@c_SpecificProject, new_val_xx = list(cpdiaggrouped = c("NotApp","Other","SubstanceUse"),
-                                                                                       dstudyingworking = c("Both","Study","Work"),
-                                                                                       sremoteness = c("MajorCities","OuterRegional","RemoteVeryRemote")), what_1L_chr = "dummys"))) 
+                         renew(.x@c_SpecificProject, list(cpdiaggrouped = c("NotApp","Other","SubstanceUse"), ## Reform
+                                                          dstudyingworking = c("Both","Study","Work"),
+                                                          sremoteness = c("MajorCities","OuterRegional","RemoteVeryRemote")), what_1L_chr = "dummys"))) 
 ```
-
 
 Next we assess multiple versions of our preferred model type - one single predictor model for each of our candidate predictors and the same models with candidate covariates added. A number of model/plot objects are saved to a sub-directory of our output directory. We specify the criterion that for each utility measure, candidate covariates must be significant parameters in all preferred models (the "all" value for `signft_covars_cndn_1L_chr`) to be considered for subsequent steps. To relax this condition, supply "any" instead of "all".
 
 ```{r message=FALSE, results='hide', warning=FALSE}
 projects_ls <- projects_ls %>% 
-  purrr::map(~ renewSlot(.x, "c_SpecificProject", 
-                         #investigateSlot(A,"c_SpecificProject")
-                         investigate_SpecificPredictors(.x@c_SpecificProject,
-                                                        depnt_var_min_val_1L_dbl = 0.00001,
-                                                        signft_covars_cndn_1L_chr = "all"))) 
+  purrr::map(~ investigate(.x, consent_1L_chr = consent_1L_chr, depnt_var_min_val_1L_dbl = 0.0001, signft_covars_cndn_1L_chr = "all")) 
 ```
 
+Uncommenting and running the following code will allow inspection of the performance of the predictors.
 
 ```{r}
-# Uncommenting the following code will allow inspection of the performance of the predictors.
-# exhibit(projects_ls$AQOL_r4@c_SpecificProject, what_1L_chr = "predr_cmprsn", type_1L_chr = "results",scroll_box_args_ls = list(width = "100%"))
-# exhibit(projects_ls$CHU_r4@c_SpecificProject, what_1L_chr = "predr_cmprsn", type_1L_chr = "results",scroll_box_args_ls = list(width = "100%"))
+# Not run
+# exhibit(projects_ls$AQOL_r4@c_SpecificProject, what_1L_chr = "predr_cmprsn", type_1L_chr = "results") # Reform
+# exhibit(projects_ls$CHU_r4@c_SpecificProject, what_1L_chr = "predr_cmprsn", type_1L_chr = "results")
 ```
 
+Uncommenting and running the following code will allow inspection of additional performance indicators of the predictors.
+
 ```{r}
-# Uncommenting the following code will allow inspection of additional performance indictors of the predictors.
-# exhibit(projects_ls$AQOL_r4@c_SpecificProject, type_1L_chr = "results", what_1L_chr = "fxd_sngl_cmprsn")
+# Not run
+# exhibit(projects_ls$AQOL_r4@c_SpecificProject, type_1L_chr = "results", what_1L_chr = "fxd_sngl_cmprsn") # Reform
 # exhibit(projects_ls$CHU_r4@c_SpecificProject, type_1L_chr = "results", what_1L_chr = "fxd_sngl_cmprsn")
 ```
 
+Uncommenting the following code will allow identification of significant covariates.
+
 ```{r}
-# Uncommenting the following code will allow identification of significant covariates.
-# exhibit(projects_ls$AQOL_r4@c_SpecificProject, type_1L_chr = "results", what_1L_chr = "fxd_full_cmprsn", scroll_box_args_ls = list(width = "100%"))
-# exhibit(projects_ls$CHU_r4@c_SpecificProject, type_1L_chr = "results", what_1L_chr = "fxd_full_cmprsn", scroll_box_args_ls = list(width = "100%"))
+# Not run
+# exhibit(projects_ls$AQOL_r4@c_SpecificProject, type_1L_chr = "results", what_1L_chr = "fxd_full_cmprsn") # Reform
+# exhibit(projects_ls$CHU_r4@c_SpecificProject, type_1L_chr = "results", what_1L_chr = "fxd_full_cmprsn")
 ```
+
+Covariates that were significant in all models for each instrument can be returned by uncommenting the following:
+
 ```{r}
-# Covariates that were significant in all models can be returned by uncommenting the following
+# Not run
 # purrr::map(projects_ls, ~procure(.x@c_SpecificProject, type_1L_chr = "results", what_1L_chr = "signt_covars"))
 ```
 
@@ -379,75 +303,135 @@ After reviewing the output of the previous step, we specify the covariates we wi
 
 ```{r message=FALSE, results='hide', warning=FALSE}
 projects_ls <- projects_ls %>% 
-  purrr::map(~ renewSlot(.x, "c_SpecificProject", 
-                         renew(procureSlot(.x, "c_SpecificProject"),type_1L_chr = "results", what_1L_chr = "prefd_covars",
-                               new_val_xx = procure(.x@c_SpecificProject, type_1L_chr = "results", what_1L_chr = "signt_covars"))))
-# To manually over-ride the default selections, replace the value supplied to new_val_xx, e.g. new_val_xx = c("cdaysoor", "dage", if(inherits(.x@a_ScorzProfile,"ScorzAqol6Adol")){ "dgender"}),
+  purrr::map(~ renew(.x, procure(.x@c_SpecificProject, type_1L_chr = "results", what_1L_chr = "signt_covars"), type_1L_chr = "covariates", what_1L_chr = "results"))
+```
+
+Alternatively, we could have over-ridden the default selections and specified our own values, for example:
+
+```{r message=FALSE, results='hide', warning=FALSE}
+# Not run
+# projects_ls <- projects_ls %>% 
+#   purrr::map(~ renew(.x,c("cdaysoor", "dage", if(inherits(.x@a_ScorzProfile,"ScorzAqol6Adol")){ "dgender"}), type_1L_chr = "covariates", what_1L_chr = "results"))
 ```
 
 We now assess the multivariate models.  More model/plot objects are saved to a sub-directory of our output directory.
 
 ```{r message=FALSE, results='hide', warning=FALSE}
 projects_ls <- projects_ls %>% 
-  purrr::map(~ renewSlot(.x, "c_SpecificProject", investigate_SpecificFixed(.x@c_SpecificProject, depnt_var_min_val_1L_dbl = 0.00001))) #investigateSlot(.x, "c_SpecificProject")
+  purrr::map(~ investigate(.x, consent_1L_chr = consent_1L_chr, depnt_var_min_val_1L_dbl = 0.00001)) 
 ```
 
 ## Create bayesian models for use in prediction
 We next reformulate the models we finalised in the previous step as bayesian models that we will use when making predictions.
 
 ### Primary analysis
-We first modify the default parameters used when creating the models to address potential convergence issues.
+We first modify the default parameters used when creating the models to address potential convergence issues. Supplying a non-default value for `adapt_delta` that is close to but less than 1 (as we have done below) can reduce the risk of divergent transitions, though it may result in slower sampling speeds (i.e., it will take longer to execute subsequent steps with sampling).
 
 ```{r}
 projects_ls <- projects_ls %>% 
-  purrr::map(~ renewSlot(.x, "c_SpecificProject@b_SpecificParameters@control_ls", list(adapt_delta = 0.99))) # This step may not be necessary when using the real data - skipping it will speed execution of the next step.
+  purrr::map(~ renewSlot(.x, "c_SpecificProject@b_SpecificParameters@control_ls", list(adapt_delta = 0.99))) # Reform
 ```
 
-For our primary analysis, we use a baysesian formulation of the models we previously selected. A series of large model files are written to a sub-directory of the local output data directory.
+For our primary analysis, we use a baysesian formulation of the models we previously selected. A series of large model files are written to a sub-directory of the local output data directory. If not using multiple cores, this step will typically take a very long time (~20 hours) to execute.
 
 ```{r }
 projects_ls <- projects_ls %>% 
-  purrr::map(~ renewSlot(.x, "c_SpecificProject", investigate_SpecificMixed(.x@c_SpecificProject, combinations_1L_lgl = T, 
-                                                                            cores_1L_int = parallel::detectCores(), # For PC, use cores_1L_int = 1L
-                                                                            max_nbr_of_covars_1L_int = 2L, depnt_var_min_val_1L_dbl = 0.00001))) ##investigateSlot(.x, "c_SpecificProject")
-# A <- renewSlot(A, "c_SpecificProject",
-#                investigate_SpecificMixed(A@c_SpecificProject)
-#                #investigateSlot(A, "c_SpecificProject")
-#                )
+  purrr::map(~ investigate(.x, combinations_1L_lgl = T, consent_1L_chr = consent_1L_chr, max_nbr_of_covars_1L_int = 2L, depnt_var_min_val_1L_dbl = 0.00001))
+```
+
+This is a good time to save a copy of our project modules.
+
+```{r}
+projects_ls <- projects_ls %>% purrr::map(~author(.x, consent_1L_chr = consent_1L_chr, what_1L_chr = "self"))
+```
+
+### Exploring differences in utility instruments
+To explore potential differences in the two utility instruments, we first create an additional project and workspace.
+
+```{r}
+dir.create(paste0(path_to_output_1L_chr,"/Differences"))
+A <- TTUProject(a_ScorzProfile = projects_ls$AQOL_r4@a_ScorzProfile) %>%
+  renew(what_1L_chr = "parameters") %>%
+  renew_TTUProject(projects_ls$AQOL_r4@b_SpecificParameters@predictors_lup, type_1L_chr = "predictors_lup", what_1L_chr = "parameters") %>% ## Replace when TTU module updated
+  renew(projects_ls$AQOL_r4@b_SpecificParameters@candidate_predrs_chr, type_1L_chr = "predictors_vars", what_1L_chr = "parameters") %>%
+  renew(projects_ls$AQOL_r4@b_SpecificParameters@candidate_covars_chr, type_1L_chr = "covariates", what_1L_chr = "parameters") %>%
+  renew(projects_ls$AQOL_r4@b_SpecificParameters@fake_1L_lgl, type_1L_chr = "is_fake", what_1L_chr = "parameters") %>%
+  renew(consent_1L_chr = consent_1L_chr, paths_chr = paste0(path_to_output_1L_chr,"/Differences"), what_1L_chr = "project")
 ```
 
 ```{r}
-#make_predr_vars_nms_ls needs updating! Only creating models with first significant covariate.
+A <- investigate(A, consent_1L_chr = consent_1L_chr, depnt_var_max_val_1L_dbl = 0.9999, session_ls = sessionInfo()) %>%
+  renew(c("GLM_GSN_LOG", "OLS_CLL"), type_1L_chr = "models", what_1L_chr = "results") %>%
+  investigate(consent_1L_chr = consent_1L_chr, signft_covars_cndn_1L_chr = "all")
 ```
 
-### Secondary analyses
+We can inspect the initial results by uncommenting and running the following commands.
 
-For our secondary analyses, we will run our analysis algorithm using CHU-9D as a predictor for AQoL-6D.
 ```{r}
-A@c_SpecificProject@a_YouthvarsProfile@a_Ready4useDyad@ds_tb <- A@c_SpecificProject@a_YouthvarsProfile@a_Ready4useDyad@ds_tb %>%dplyr::rename(CHU9D = chu9_total_w)
-A@c_SpecificProject@a_YouthvarsProfile@a_Ready4useDyad@dictionary_r3 <- renew.ready4use_dictionary(A@c_SpecificProject@a_YouthvarsProfile@a_Ready4useDyad@dictionary_r3 %>% renew.ready4use_dictionary(filter_cdn_1L_chr = "var_nm_chr != 'chu9_total_w'"), var_nm_chr = "CHU9D", var_ctg_chr = "health_utility", var_desc_chr = "Child Health Utility (9 Dimension) total score", var_type_chr = "double")
-A@c_SpecificProject@c_SpecificResults@b_SpecificPrivate@private_outp_ls$scored_data_tb <- A@c_SpecificProject@c_SpecificResults@b_SpecificPrivate@private_outp_ls$scored_data_tb %>% dplyr::rename(CHU9D = chu9_total_w)
-A@c_SpecificProject@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$dictionary_tb <- renew.ready4use_dictionary(A@c_SpecificProject@c_SpecificResults@a_SpecificShareable@shareable_outp_ls$dictionary_tb %>% renew.ready4use_dictionary(filter_cdn_1L_chr = "var_nm_chr != 'chu9_total_w'"), var_nm_chr = "CHU9D", var_ctg_chr = "health_utility", var_desc_chr = "Child Health Utility (9 Dimension) total score", var_type_chr = "double")
+# exhibit(A@c_SpecificProject, what_1L_chr = "predr_cmprsn", type_1L_chr = "results")
+```
+```{r}
+# exhibit(A@c_SpecificProject, type_1L_chr = "results", what_1L_chr = "fxd_sngl_cmprsn")
 ```
 
+```{r}
+# exhibit(A@c_SpecificProject, type_1L_chr = "results", what_1L_chr = "fxd_full_cmprsn")
+```
 
-```{r }
-A <- renewSlot(A, "c_SpecificProject",
-               investigate_SpecificMixed(A@c_SpecificProject,
-               #investigateSlot(A, "c_SpecificProject",
-                               scndry_anlys_params_ls = make_scndry_anlys_params(candidate_predrs_chr = c("CHU9D"),
-                                                                                 candidate_covar_nms_chr = c("dage", "cdayscutback", "cdaysunable"),
-                                                                                 prefd_covars_chr = NA_character_,
-                                                                                 predictors_lup = A@b_SpecificParameters@predictors_lup %>%
-                                                                                   specific::renew.specific_predictors(short_name_chr = "CHU9D",
-                                                                                                                       long_name_chr = "CHU-9D utility",
-                                                                                                                       min_val_dbl = 0,
-                                                                                                                       max_val_dbl = 0,
-                                                                                                                       class_chr = "numeric",
-                                                                                                                       increment_dbl = 0.05,
-                                                                                                                       class_fn_chr = "as.double",
-                                                                                                                       mdl_scaling_dbl = 1,
-                                                                                                                       covariate_lgl = F))))
+```{r}
+# procure(A@c_SpecificProject, type_1L_chr = "results", what_1L_chr = "signt_covars")
+```
+
+We could choose the covariates already identified as significant in all models with the best performing candidate predictor. To do so we would uncomment and run the following:
+
+```{r}
+# Not run
+# A <- renew(A, procure(A@c_SpecificProject, type_1L_chr = "results", what_1L_chr = "signt_covars"), type_1L_chr = "covariates", what_1L_chr = "results")
+```
+
+However, in this case we have opted to specify a custom selection.
+```{r}
+ A <- renew(A, c("cdaysoor", "dage", "dgender"), type_1L_chr = "covariates", what_1L_chr = "results")
+```
+
+We now explore how well these covariates help predict differences between the two utility instruments.
+
+```{r}
+A <- investigate(A, consent_1L_chr = consent_1L_chr)
+```
+
+Based on the above analysis of what predicts differences between AQoL-6D and CHU-9D in our sample, we can now run secondary analyses that specify and test models that map between CHU-9D and AQoL-6D.
+
+```{r}
+projects_ls$AQOL_r4 <- investigate(projects_ls$AQOL_r4, combinations_1L_lgl = F, consent_1L_chr = consent_1L_chr,
+                                   scndry_anlys_params_ls = make_scndry_anlys_params(candidate_predrs_chr = c("CHU9D"),
+                                                                                     candidate_covar_nms_chr = c("K10","SOFAS"),
+                                                                                     prefd_covars_chr = NA_character_) %>%
+                                     make_scndry_anlys_params(candidate_predrs_chr = c("CHU9D"),
+                                                              candidate_covar_nms_chr = c("K10", "dage", "dgender"),
+                                                              prefd_covars_chr = c("K10", "dage", "dgender")) %>%
+                                     make_scndry_anlys_params(candidate_predrs_chr = c("CHU9D"),
+                                                              candidate_covar_nms_chr = c("SOFAS", "dage", "dgender"),
+                                                              prefd_covars_chr = c("SOFAS", "dage", "dgender")))
+```
+
+```{r}
+# projects_ls$CHU_r4 <- investigate(projects_ls$CHU_r4, combinations_1L_lgl = F, consent_1L_chr = consent_1L_chr,
+#                                    scndry_anlys_params_ls = make_scndry_anlys_params(candidate_predrs_chr = c("AQOL6D"),
+#                                                                                      candidate_covar_nms_chr = c("K10","SOFAS"),
+#                                                                                      prefd_covars_chr = NA_character_) %>%
+#                                      make_scndry_anlys_params(candidate_predrs_chr = c("AQOL6D"),
+#                                                               candidate_covar_nms_chr = c("K10", "dage", "dgender"),
+#                                                               prefd_covars_chr = c("K10", "dage", "dgender")) %>%
+#                                      make_scndry_anlys_params(candidate_predrs_chr = c("AQOL6D"),
+#                                                               candidate_covar_nms_chr = c("SOFAS", "dage", "dgender"),
+#                                                               prefd_covars_chr = c("SOFAS", "dage", "dgender")))
+```
+
+This is another good time to save our work to date.
+
+```{r}
+saveRDS(projects_ls,paste0(path_to_output_1L_chr,"/Project/project_ls.RDS"))
 ```
 
 # Report and disseminate findings
@@ -456,142 +440,154 @@ A <- renewSlot(A, "c_SpecificProject",
 The model objects created and saved in our working directory by the preceding steps are not suitable for public dissemination. They are both too large in file size and, more importantly, include copies of our source dataset. We can overcome these limitations by creating shareable versions of the models. Two types of shareable version are created - copies of the original model objects in which fake data overwrites the original source data and tables of model coefficients.
 
 ```{r}
-A <- renewSlot(A, "c_SpecificProject",
-               authorData_SpecificMixed(procureSlot(A, "c_SpecificProject"))) #authorData
+projects_ls <- projects_ls %>% purrr::map(~ renewSlot(.x, "c_SpecificProject",
+                                                      authorData_SpecificMixed(procureSlot(.x, "c_SpecificProject"), consent_1L_chr = consent_1L_chr, depnt_var_min_val_1L_dbl = 0.0001)) # Replace
+                                            #author(.x, consent_1L_chr = consent_1L_chr, what_1L_chr = "models")
+                                          )
 ```
 
 # Specify study reporting metadata
-We create a `TTUSynopsis` object that contains the fields necessary to render and share reports.
+We update our project modules so that they are ready to render and share reports.
 
 ```{r}
-A <- renewSlot(A, "d_TTUReports",
-               {
-                 Y <- metamorphoseSlot(A, "c_SpecificProject")
-                 Y <- TTUSynopsis(a_Ready4showPaths = Y@a_Ready4showPaths,
-                                  b_SpecificResults = Y@b_SpecificResults,
-                                  c_SpecificParameters = Y@c_SpecificParameters,
-                                  d_YouthvarsProfile = Y@d_YouthvarsProfile,
-                                  rmd_fl_nms_ls = Y@rmd_fl_nms_ls)
-                 Y <- TTUReports(a_TTUSynopsis = Y)
-                 Y
-                 }
-               )
+projects_ls <- projects_ls %>% purrr::map(~ renew(.x, what_1L_chr = "reporting"))
 ```
 
-We add metadata relevant to the reports that we will be generating to these fields. Note that the data we supply to the Ready4useRepos module below must relate to a repository to which we have write permissions (otherwise subsequent steps will fail). If you do not have write permissions to the dataverse dataset specified below, you can instead supply values relating to a repository that you do have write permissions to. Alternatively, you can skip any subsequent `share` or `shareSlot` commands that involve writing data to the online data repository.
+We add metadata relevant to the reports that we will be generating. Note, when rendering real reports it may be necessary to update the default values in the CSVs for authors and their institutional affiliations.
 
 ```{r eval =F}
-A <- renewSlot(A, "d_TTUReports@a_TTUSynopsis",
-               procureSlot(A, "d_TTUReports@a_TTUSynopsis") %>% 
-                 renewSlot("authors_r3", 
-                           {if(A@b_SpecificParameters@fake_1L_lgl){ready4show::authors_tb}else{read.csv("CSVs/Authors.csv") %>% 
-                               tibble::as_tibble() %>% ready4show::ready4show_authors()}}) %>%
-                 renewSlot("institutes_r3", 
-                           {if(A@b_SpecificParameters@fake_1L_lgl){ready4show::institutes_tb }else{
-                               read.csv("CSVs/Institutes.csv") %>% tibble::as_tibble() %>% ready4show::ready4show_institutes()}}) %>%
-                 renewSlot("digits_int", c(3L,3L)) %>%
-                 renewSlot("outp_formats_chr", c("PDF","PDF")) %>%
-                 renewSlot("title_1L_chr", 
-                           ifelse(A@b_SpecificParameters@fake_1L_lgl,paste0("A hypothetical study using fake data", "to map psychological distress and functioning measures to adolescent AQoL-6D utility"),
-                                  "Mapping psychological distress and functioning measures to adolescent AQoL-6D utility using data from a sample of young people presenting to primary mental health services")) %>%
-                 #renewSlot("correspondences_r3", old_nms_chr = c("PHQ9", "GAD7"), new_nms_chr = c("PHQ-9", "GAD-7")) %>%
-                 renewSlot("e_Ready4useRepos", 
-                           Ready4useRepos(dv_nm_1L_chr = "TTU", 
-                                          dv_ds_nm_1L_chr = ifelse(A@b_SpecificParameters@fake_1L_lgl,"https://doi.org/10.7910/DVN/LYBMB0", "https://doi.org/10.7910/DVN/FDRUXH"), 
-                                          dv_server_1L_chr = "dataverse.harvard.edu"))) 
+projects_ls <- projects_ls %>%
+  purrr::map2(repositories_ls[ifelse(.x@b_SpecificParameters@fake_1L_lgl,3,1):ifelse(.x@b_SpecificParameters@fake_1L_lgl,4,2)], ~{
+  renew(.x, {if(.x@b_SpecificParameters@fake_1L_lgl){ready4show::authors_tb}else{read.csv("../Data/CSVs/Authors.csv") %>% 
+                               tibble::as_tibble() %>% ready4show::ready4show_authors()}}, type_1L_chr = "authors", what_1L_chr = "reporting") %>%
+  renew({if(.x@b_SpecificParameters@fake_1L_lgl){ready4show::institutes_tb }else{
+                               read.csv("../Data/CSVs/Institutes.csv") %>% tibble::as_tibble() %>% ready4show::ready4show_institutes()}}, type_1L_chr = "institutes", what_1L_chr = "reporting") %>%
+  renew(c(3L,3L), type_1L_chr = "digits", what_1L_chr = "reporting") %>%
+  renew(c("PDF","PDF"), type_1L_chr = "formats", what_1L_chr = "reporting") %>%
+  renew(paste0(ifelse(.x@b_SpecificParameters@fake_1L_lgl,
+               "A hypothetical study using fake data to map",
+               "Mapping"),
+               " K10 psychological distress and SOFAS functioning measures to ",  
+               ifelse(inherits(.x@a_ScorzProfile,"ScorzAqol6Adol"),
+                      "AQoL-6D",
+                      "CHU-9D"),
+               " health utility using data from a sample of young people presenting to primary mental health services"), type_1L_chr = "title", what_1L_chr = "reporting") %>%
+  renew(.y, type_1L_chr = "repos", what_1L_chr = "reporting") 
+  })
+
 ```
+
 
 ## Describe and share models
 
 ### Author model catalogues
-We download a program for generating a catalogue of models and use it to summarising the models created under each study analysis (one primary and two secondary). The catalogues are saved locally.
 
 ```{r}
-author_TTUReports(A@d_TTUReports, what_1L_chr = "Catalogue", download_tmpl_1L_lgl = F#, subtitle_1L_chr = "Catalogue of models"
-                  )
-#authorSlot(A, "d_TTUReports", what_1L_chr = "Catalogue", download_tmpl_1L_lgl = T, subtitle_1L_chr = "Catalogue of models") # Need to update catalogue RMD
+projects_ls <- projects_ls %>% purrr::map(~author(.x, consent_1L_chr = consent_1L_chr, download_tmpl_1L_lgl = T, what_1L_chr = "catalogue"))
 ```
 
-### Share model catalogue
-We share the catalogues that we created, uploading a copy to our study online repository. To run this step you will need write permissions to the online repository.
+### Author manuscripts
+We add additional meta-data necessary for rendering a manuscript from template and then create the abstracts and plots that will be used in the automatically authored manuscripts.
 
 ```{r}
-shareSlot(A, "d_TTUReports@a_TTUSynopsis", type_1L_chr = "Report", what_1L_chr = "Catalogue") # May get an error message - can ignore so long as files uploaded.
+projects_ls <- projects_ls %>%
+  purrr::map2(list(c("AQoL-6D", "Adolescent AQoL Six Dimension"),
+                   c("CHU-9D", "Child Health Utility Nine Dimension")),
+              ~ {
+                renew(.x, "Quality Adjusted Life Years (QALYs) are often used in economic evaluations, yet utility weights for deriving them are rarely directly measured in mental health services.", 
+                      type_1L_chr = "background", what_1L_chr = "reporting") %>%
+                  renew("None declared", type_1L_chr = "conflicts", what_1L_chr = "reporting") %>%
+                  renew("Nothing should be concluded from this study as it is purely hypothetical.", 
+                        ifelse(.x@b_SpecificParameters@fake_1L_lgl, "Nothing should be concluded from this study as it is purely hypothetical.",
+                                ifelse(inherits(.x@a_ScorzProfile,"ScorzAqol6Adol"),
+                                       "REPLACE WITH TEXT TO BE WRITTEN ON REVIEW OF REAL AQOL-6D STUDY RESULTS", "REPLACE WITH TEXT TO BE WRITTEN ON REVIEW OF REAL CHU-9D STUDY RESULTS")),
+                        type_1L_chr = "conclusion", what_1L_chr = "reporting") %>%
+                  renew(ifelse(.x@b_SpecificParameters@fake_1L_lgl, "The study was reviewed and granted approval by no-one.", "REPLACE WITH DETAILS OF ETHICS APPROVAL FOR REAL STUDY"), 
+                        type_1L_chr = "ethics", what_1L_chr = "reporting") %>%
+                  renew(ifelse(.x@b_SpecificParameters@fake_1L_lgl, "The study was funded by no-one.", "REPLACE WITH DETAILS OF FUNDING FOR REAL STUDY"), type_1L_chr = "funding", what_1L_chr = "reporting") %>%
+                  renew(c("anxiety", "AQoL","CHU9D", "psychological distress", "QALYs", "utility mapping"), type_1L_chr = "keywords", what_1L_chr = "reporting") %>%
+                  renew(ifelse(.x@b_SpecificParameters@fake_1L_lgl, "The study sample is fake data.","REPLACE WITH DETAILS OF SAMPLE FOR REAL STUDY"), type_1L_chr = "sample", what_1L_chr = "reporting")  %>%
+                  renew(.y, type_1L_chr = "naming", what_1L_chr = "reporting") %>%
+                  renew("use_renew_mthd", type_1L_chr = "abstract", what_1L_chr = "reporting") %>%
+                  author(consent_1L_chr = consent_1L_chr, items_as_domains_1L_lgl == (.y[1]=="CHU-9D"), what_1L_chr = "plots")
+              })
 ```
 
-### Share models
-We share tables of coefficients and other meta-data about the models we have created by posting them to the online repository. The object we create and share is designed to be used in conjunction with the `youthu` package to make it easier to make predictions with these models using new data. Again, you will need write permissions to the online repository.
+
+We download a program for automated authoring of a scientific summary from a template and run it to author a first draft of the manuscript.
 
 ```{r}
-shareSlot(A, "d_TTUReports@a_TTUSynopsis", type_1L_chr = "Models", what_1L_chr = "ingredients")
+projects_ls <- projects_ls %>% purrr::map(~author(.x, consent_1L_chr = consent_1L_chr, download_tmpl_1L_lgl = T, what_1L_chr = "manuscript"))
 ```
 
-## Author manuscript
-We add some content about the manuscript we wish to author.
-
-```{r eval =F}
-A <- renewSlot(A, "d_TTUReports@a_TTUSynopsis",
-               procureSlot(A, "d_TTUReports@a_TTUSynopsis") %>% 
-                 renewSlot("background_1L_chr", 
-                           "Quality Adjusted Life Years (QALYs) are often used in economic evaluations, yet utility weights for deriving them are rarely directly measured in mental health services.") %>%
-                 renewSlot("coi_1L_chr", "None declared") %>%
-                 renewSlot("conclusion_1L_chr", 
-                           ifelse(A@b_SpecificParameters@fake_1L_lgl, 
-                                  "Nothing should be concluded from this study as it is purely hypothetical.",
-                                  "To be written on review of real data")) %>%
-                 renewSlot("ethics_1L_chr", 
-                           paste0("The study was reviewed and granted approval by ", 
-                                  ifelse(A@b_SpecificParameters@fake_1L_lgl,"no-one.",
-                                         "the University of Melbourne’s Human Research Ethics Committee and the local Human Ethics and Advisory Group (ADD NUMBER HERE"))) %>%
-                 renewSlot("funding_1L_chr", 
-                           paste0("The study was funded by ",
-                                  ifelse(A@b_SpecificParameters@fake_1L_lgl,"no-one.",
-                                         "the National Health and Medical Research Council (NHMRC, ADD ID HERE), Orygen and headspace."))) %>%
-                 #renewSlot("interval_chr", "three months") %>%
-                 renewSlot("keywords_chr", 
-                           c("AQoL","functioning", "psychological distress", "QALYs", "utility mapping")) %>%
-                 renewSlot("sample_desc_1L_chr", 
-                           ifelse(A@b_SpecificParameters@fake_1L_lgl, "The study sample is fake data.","")) )
-```
-
-We create a summary of the study that can be interpreted by the program that authors the manuscript.
-
-```{r eval =F}
-A <- renewSlot(A, "d_TTUReports@a_TTUSynopsis@abstract_args_ls",
-               #manufactureSlot(A,"d_TTUReports@a_TTUSynopsis", 
-                manufacture_SpecificSynopsis(A@d_TTUReports@a_TTUSynopsis,
-                                             what_1L_chr = "abstract_args_ls",
-                                             depnt_var_nms_chr = c("AQoL-6D", "Adolescent AQoL Six Dimension"))) 
-```
-
-```{r eval =F}
-A@d_TTUReports@a_TTUSynopsis <- enhance_SpecificSynopsis(A@d_TTUReports@a_TTUSynopsis, # A <- enhanceSlot(A, "d_TTUReports@a_TTUSynopsis", 
-                 with_1L_chr = "results_ls",
-                 depnt_var_nms_chr = c("AQoL-6D", "Adolescent AQoL Six Dimension")) 
-```
-
-We create and save the plots that will be used in the manuscript.
+We can copy the RMarkdown files that created the template manuscript to a new directory (called “Manuscript_Submission”) so that we can then manually edit those files to produce a manuscript that we can submit for publication.
 
 ```{r}
-#authorSlot(A, "d_TTUReports",
-author_TTUReports(A@d_TTUReports,           
-           type_1L_chr = "Plots",
-           depnt_var_desc_1L_chr = A@d_TTUReports@a_TTUSynopsis@b_SpecificResults@a_SpecificShareable@shareable_outp_ls$results_ls$study_descs_ls$health_utl_nm_1L_chr)
+projects_ls <- projects_ls %>% purrr::map(~author(.x, consent_1L_chr = consent_1L_chr, type_1L_chr = "copy", what_1L_chr = "manuscript"))
 ```
 
-We download a program for generating a template manuscript and run it to author an algorithm authored first draft of the manuscript.
+Alternatively we could download a program for rendering the submission version of the manuscript. To do so you need to uncomment the below code, update the references to the program you wish to download and then run it.
 
 ```{r}
-authorSlot(A, "d_TTUReports", type_1L_chr = "Report", what_1L_chr = "Manuscript_Auto", download_tmpl_1L_lgl = F)#T
+# Not run
+# projects_ls <- projects_ls %>% purrr::map(~renew(.x, c("URL of GitHub repository with", "Program version number"), type_1L_chr = "template-manuscript", what_1L_chr = "reporting"))
 ```
 
-```{r echo=FALSE}
-#author_TTUReports(A@d_TTUReports, type_1L_chr = "Dependencies", what_1L_chr = "Manuscript_Auto")
+We can now configure the output to be generated by the manuscript authoring program. The below commands will specify a Microsoft Word format manuscript and a PDF technical appendix. Unlike the template manuscript, the figures and tables will be positioned after (and not within) the main body of the manuscript. Note that the Word version of the manuscript generated by these values will require some minor formatting edits (principally to the display of tables and numbering of sections).
+
+```{r}
+projects_ls <- projects_ls %>% purrr::map(~renew(.x, F, type_1L_chr = "figures-body", what_1L_chr = "reporting") %>%
+                                            renew(F, type_1L_chr = "tables-body", what_1L_chr = "reporting") %>%
+                                            renew(c("Word","PDF"), type_1L_chr = "formats", what_1L_chr = "reporting"))
+```
+
+If working with real data, the following commands will generate additional artefacts (high quality plots, summary table of dependency libraries) required for a manuscript submission.
+
+```{r}
+projects_ls <- projects_ls %>% purrr::map(~{
+  if(.x@b_SpecificParameters@fake_1L_lgl){
+    .x
+  }else{
+    author(.x, consent_1L_chr = consent_1L_chr, type_1L_chr = "plots", what_1L_chr = "manuscript") %>% 
+                                            author(consent_1L_chr = consent_1L_chr, type_1L_chr = "dependencies", what_1L_chr = "manuscript")
+  }
+} )
+```
+
+Once any edits to the RMarkdown files for creating the submission manuscript have been finalised, we can run the following command to author the manuscript. If we are using a custom manuscript authoring program downloaded from an online repository the download_tmpl_1L_lgl argument will need to be set to `T`.
+
+```{r}
+projects_ls <- projects_ls %>% purrr::map(~author(.x, consent_1L_chr = consent_1L_chr, download_tmpl_1L_lgl = F, type_1L_chr="submission", what_1L_chr = "manuscript"))
+```
+
+We next generate the Supplementary Information for the submission manuscript.
+
+```{r}
+projects_ls <- projects_ls %>% purrr::map(~author(.x, consent_1L_chr = consent_1L_chr, supplement_fl_nm_1L_chr = "TA_PDF", type_1L_chr="submission", what_1L_chr = "supplement"))
+```
+
+### Share outputs
+We can now share non-confidential elements (ie no copies of individual records) of the outputs that we have created via our study online repository. To run this step you will need write permissions to the online repository. In the below step we are sharing model catalogues, details of the utility instrument, the shareable mapping models (designed to be used in conjunction with the youthu package) and (only if we are using fake data) our manuscript files, including supplementary information. This step has to be run interactively as it will ask for permission both to upload each file to the relevant online repository and to publish the dataset. You should say "N" (for "No") the first time you are asked to publish the dataset as you will be asked twice and answering yes both times will mean two new versions of the dataset are created, which is unnecessary. You may also prefer to answer "N" both times to the publishing question and manually inspect the draft dataset before publishing it.
+
+```{r}
+projects_ls <- projects_ls %>% purrr::map(~share(.x, types_chr = c("auto", "submission"), what_chr = c("catalogue", "instrument", "models", {if(.x@b_SpecificParameters@fake_1L_lgl){c("manuscript", "supplement")}else{character(0)}})))
 ```
 
 # Tidy workspace
-The preceding steps saved multiple objects (mostly R model objects) that have embedded within them copies of the source dataset. We can now purge all such copies from our output data directory.
+The preceding steps saved many objects (mostly R model objects) that have embedded within them copies of the source dataset. We can now purge such copies from our output data directory. 
+
+Purging files should only be undertaken once you are happy with the reports you have generated as many of the files to be purged are required for report authoring. Once you are sure that you wish to purge the files, uncomment and run the following.
 
 ```{r}
-#author(procureSlot(A,"c_SpecificProject"), type_1L_chr = "purge_write") 
+#projects_ls <- projects_ls %>% purrr::map(~author(.x, what_1L_chr = "purge"))
 ```
+
+Note, the small number of project copies we explicitly made in this script will not be purged by the preceding step, so these need to be deleted manually. They are located at: 
+
+- Data > AQOL > Fake / Real (Depending on whether data is fake or real) > Output > TTUProject.RDS
+
+- Data > CHU > Fake / Real (Depending on whether data is fake or real) > Output > TTUProject.RDS
+
+- Data > Project > project_ls
+
+- Data > Project > project.RDS

@@ -4,6 +4,8 @@ Data/Real/*
 Data/Fake/*
 Data/CHU/*
 Data/AQOL/*
+Data/Differences/*
+Data/Project/*
 # History files
 .Rhistory
 .Rapp.history
