@@ -494,7 +494,8 @@ We add metadata relevant to the reports that we will be generating. Note, when r
 
 ```{r eval =F}
 projects_ls <- projects_ls %>%
-  purrr::map2(repositories_ls[ifelse(.x@b_SpecificParameters@fake_1L_lgl,3,1):ifelse(.x@b_SpecificParameters@fake_1L_lgl,4,2)], ~{
+  purrr::map2(1:2, ~{
+    y_Ready4useRepos <- repositories_ls[ifelse(.x@b_SpecificParameters@fake_1L_lgl,3,1):ifelse(.x@b_SpecificParameters@fake_1L_lgl,4,2)][[.y]]
   renew(.x, {if(.x@b_SpecificParameters@fake_1L_lgl){ready4show::authors_tb}else{read.csv("../Data/CSVs/Authors.csv") %>% 
                                tibble::as_tibble() %>% ready4show::ready4show_authors()}}, type_1L_chr = "authors", 
         what_1L_chr = "reporting") %>%
@@ -511,7 +512,7 @@ projects_ls <- projects_ls %>%
                       "CHU-9D"),
                " health utility using data from a sample of young people presenting to primary mental health services"), 
         type_1L_chr = "title", what_1L_chr = "reporting") %>%
-  renew(.y, type_1L_chr = "repos", what_1L_chr = "reporting") 
+  renew(y_Ready4useRepos, type_1L_chr = "repos", what_1L_chr = "reporting") 
   })
 
 ```
@@ -619,7 +620,7 @@ projects_ls <- projects_ls %>% purrr::map(~author(.x, consent_1L_chr = consent_1
 ```
 
 ### Share outputs
-We can now share non-confidential elements (ie no copies of individual records) of the outputs that we have created via our study online repository. To run this step you will need write permissions to the online repository. In the below step we are sharing model catalogues, details of the utility instrument, the shareable mapping models (designed to be used in conjunction with the youthu package) and (only if we are using fake data) our manuscript files, including supplementary information. This step has to be run interactively as it will ask for permission both to upload each file to the relevant online repository and to publish the dataset. You should say "N" (for "No") the first time you are asked to publish the dataset as you will be asked twice and answering yes both times will mean two new versions of the dataset are created, which is unnecessary. You may also prefer to answer "N" both times to the publishing question and manually inspect the draft dataset before publishing it.
+We can now share non-confidential elements (ie no copies of individual records) of the outputs that we have created via our study online repository. To run this step you will need write permissions to the online repository. In the below step we are sharing model catalogues, details of the utility instrument, the shareable mapping models (designed to be used in conjunction with the youthu package) and (only if we are using fake data) our manuscript files, including supplementary information. This step has to be run interactively as it will ask for permission (often twice for each request) both to upload each file to the relevant online repository and to publish the dataset. 
 
 ```{r}
 projects_ls <- projects_ls %>% purrr::map(~share(.x, types_chr = c("auto", "submission"), 
