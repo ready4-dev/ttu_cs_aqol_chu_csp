@@ -43,6 +43,7 @@ When using this code it is important to note:
 If you do not already have the required libraries to run this program installed, you can do so by un-commenting and running the following lines. Note, if you do not already have cmdstandr installed and configured you will also need to perform a minor additional configuration step as outlined on https://mc-stan.org/cmdstanr/ .
 
 ```{r }
+# install.packages("betareg")
 # install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
 # devtools::install_github("ready4-dev/ready4") 
 # devtools::install_github("ready4-dev/TTU") 
